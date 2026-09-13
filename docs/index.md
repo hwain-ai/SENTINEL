@@ -21,8 +21,8 @@
 
 ## 언어별 검증 기록(각 저장소)
 
-* [Python](https://github.com/hwain-hwang/SENTINEL_PY/blob/main/docs/sentinel-python-native-validation.md)
-* [TypeScript](https://github.com/hwain-hwang/SENTINEL_TS/blob/main/docs/sentinel-typescript-native-validation.md)
-* [Go](https://github.com/hwain-hwang/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)
-* [Java 상용 후보 검토](https://github.com/hwain-hwang/SENTINEL_JAVA/blob/main/docs/sentinel-java-commercial-candidates.md)
-* [Clojure](https://github.com/hwain-hwang/SENTINEL_CLJ/blob/main/docs/sentinel-clojure-native-validation.md)
+* [Python](https://github.com/hwain-ai/SENTINEL_PY/blob/main/docs/sentinel-python-native-validation.md)
+* [TypeScript](https://github.com/hwain-ai/SENTINEL_TS/blob/main/docs/sentinel-typescript-native-validation.md)
+* [Go](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)
+* [Java 상용 후보 검토](https://github.com/hwain-ai/SENTINEL_JAVA/blob/main/docs/sentinel-java-commercial-candidates.md)
+* [Clojure](https://github.com/hwain-ai/SENTINEL_CLJ/blob/main/docs/sentinel-clojure-native-validation.md)

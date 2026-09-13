@@ -96,7 +96,8 @@ def build_parser() -> argparse.ArgumentParser:
     setup.add_argument("--config", default="sentinel.workspace.json")
     setup.add_argument("--tools")
     setup.add_argument("--sources")
-    setup.add_argument("--language", action="append", default=[], choices=sorted(SETUP_LANGUAGES), required=True)
+    # Omitted: every language the plugin supports (python, typescript, java) is prepared.
+    setup.add_argument("--language", action="append", default=[], choices=sorted(SETUP_LANGUAGES))
     setup.add_argument("--format", choices=("text", "json"), default="text")
     setup.add_argument("--python-requirements")
     setup.add_argument("--java-dependencies", action="store_true")

@@ -191,6 +191,17 @@ class SetupCommandTests(unittest.TestCase):
         wrong = self.setup("--language", "python", "--java-dependencies")
         self.assertEqual(wrong.returncode, 3, wrong.stdout)
 
+    def test_setup_without_a_language_prepares_the_three_plugin_languages(self):
+        for repository in ("SENTINEL_PY", "SENTINEL_TS", "SENTINEL_JAVA"):
+            fake_language_source(self.sources, repository)
+        (self.project / "pom.xml").write_text("<project/>\n", encoding="utf-8")
+        completed = self.setup()
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual([item["language"] for item in payload["results"]], ["java", "python", "typescript"])
+        workspace_document = json.loads((self.project / "sentinel.workspace.json").read_text(encoding="utf-8"))
+        self.assertEqual(sorted(module["language"] for module in workspace_document["modules"]), ["java", "python", "typescript"])
+
     def test_bootstrap_failure_or_missing_source_is_a_dependency_error_without_configs(self):
         fake_language_source(self.sources, "SENTINEL_PY", setup_exit=1)
         completed = self.setup("--language", "python")

@@ -102,7 +102,7 @@ Python, TypeScript, Go, Java, Clojure 프로젝트에 같은 CRAP·mutation 품�
 |공통규칙-02|v1에서는 mutation 엔진을 새로 구현하지 않고 승인·고정한 언어별 backend를 wrapper로 사용한다. SENTINEL은 검사 범위, 상태 정규화, 증거, 엄격한 gate를 소유한다.|
 |공통규칙-03|CRAP은 반올림 전 값 기준 최대 8.0 이하이고, mutation은 모든 in-scope mutant가 killed일 때만 통과한다.|
 |공통규칙-04|SwarmForge뿐 아니라 앞으로 사용하는 다른 코딩 하네스, 사람, CI가 동일한 독립 CLI로 실행할 수 있게 만든다.|
-|공통규칙-05|6개 원격 저장소는 인증된 GitHub 계정 `hwain-hwang`에 비공개로 만든다.|
+|공통규칙-05|6개 원격 저장소는 인증된 GitHub 계정 `hwain-ai`에 비공개로 만든다.|
 |공통규칙-06|기존 `crap4clj`, `crap4go`, `crap4java`, `clj-mutate`, `mutate4go`, `mutate4java`, `swarm-forge` 저장소는 고정된 비교 자료와 backend 근거로만 사용하고 수정하지 않는다.|
 |공통규칙-07|Git 명령은 반드시 각 소유 child repository 안에서만 실행한다. workspace root는 Git 저장소로 취급하지 않는다.|
 |공통규칙-08|모든 production 동작은 실패하는 test를 먼저 확인한 뒤 구현한다.|
@@ -192,7 +192,7 @@ Python, TypeScript, Go, Java, Clojure 프로젝트에 같은 CRAP·mutation 품�
 |공통규칙-02|“로버트 마틴은 mutmut·StrykerJS 같은 라이브러리를 아예 안 썼어?”|“v1은 검증된 언어별 mutation backend를 wrapper로 사용하고 SENTINEL이 공통 판정을 소유한다.”|목표는 mutation 엔진 복제가 아니라 모든 하네스에서 재현되는 엄격한 품질 계약이다.|
 |공통규칙-03|“CRAP 8 이하와 mutation 100% 이상으로 검증”|“CRAP raw 값은 최대 8.0 이하이고 모든 in-scope mutant가 killed일 때만 통과한다.”|100% 표시만으로 timeout·uncovered·ignored를 숨길 수 없도록 성공 조건을 상태 단위로 고정했다.|
 |공통규칙-04|“swam forge 뿐만 아니라 앞으로 코딩시 다른 하네스에서도 사용할 테스터기”|“SwarmForge, 다른 코딩 하네스, 사람과 CI가 같은 독립 CLI를 사용한다.”|오타를 바로잡고 특정 하네스에 종속되지 않는 요구를 명확히 했다.|
-|공통규칙-05|“내 github 에 비공개로 레포”|“인증된 GitHub 계정 `hwain-hwang`에 6개 비공개 저장소를 만든다.”|저장소 수와 소유 계정을 후속 승인에 맞춰 고정했다.|
+|공통규칙-05|“내 github 에 비공개로 레포”|“인증된 GitHub 계정 `hwain-ai`에 6개 비공개 저장소를 만든다.”|저장소 수와 소유 계정을 후속 승인에 맞춰 고정했다.|
 |요구사항-30|“mutation 100% 이상”|“strict kill rate는 killed를 전체 in-scope mutant 수로 나누며 mutant 0개는 통과하지 않는다.”|timeout을 killed처럼 계산하거나 빈 검사로 100%가 되는 거짓 통과를 막는다.|
 |요구사항-38..요구사항-44|“다른 언어들도 이런 식으로 다 추가해”|“확인된 5개 언어와 `SENTINEL_SPEC`을 구현하고 같은 CLI·계약으로 conformance를 검증한다.”|빈 미래 언어 저장소를 양산하지 않고 실제 backend가 확인된 언어만 v1 범위로 확정했다.|
 |요구사항-45..요구사항-54|“반복적인 결함이 발견되는지 알려면 뭔가 로그를 남기도록 만들어야 할 것 같다.”|“실행별 증거, append-only finding event, 3종 fingerprint, 프로젝트 로컬 history와 redacted export를 제공한다.”|반복 결함을 재현 가능하게 세면서도 소스·비밀·저장소 식별정보가 중앙으로 새지 않게 했다.|

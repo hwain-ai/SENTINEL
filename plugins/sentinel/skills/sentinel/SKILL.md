@@ -35,7 +35,7 @@ JSON의 실제 `selection`, 모듈별 `status`와 `exitCode`, 전체 `pass`, `ce
 
 ## 첫 실행 설정
 
-프로젝트에 `sentinel.workspace.json`이 없거나 `doctor`가 `dependencyError`를 보고하면, 검사할 언어(python, typescript, java 중 복수 가능)와 기준값을 사용자에게 확인한 뒤 `setup`을 실행한다. 기준값은 CRAP 상한 `--crap-max`(기본 8)와 변이 검사의 최소 kill 비율 `--mutation-min`(기본 100)이며, 소수점 두 자리까지의 숫자 문자열로 넘긴다. `setup`은 언어 저장소를 사용자 홈의 `.sentinel/sources`에 받고, 잠금 파일에 적힌 공식 주소·지문으로만 언어 SDK를 내려받은 뒤, 도구 묶음을 설치하고 두 설정 파일을 쓴다. 세 언어를 모두 준비하면 약 2GB를 내려받으므로 실행 전에 반드시 사용자 승인을 받는다. 언어는 `--language`를 반복해 지정한다.
+이 플러그인이 지원하는 언어는 Python, TypeScript, Java 세 가지다. 프로젝트에 `sentinel.workspace.json`이 없거나 `doctor`가 `dependencyError`를 보고하면, 검사할 언어(python, typescript, java 중 복수 가능, 생략하면 세 언어 전부)와 기준값을 사용자에게 확인한 뒤 `setup`을 실행한다. 다른 언어의 검사는 요청받아도 실행하지 않고 지원 범위 밖이라고 설명한다. 기준값은 CRAP 상한 `--crap-max`(기본 8)와 변이 검사의 최소 kill 비율 `--mutation-min`(기본 100)이며, 소수점 두 자리까지의 숫자 문자열로 넘긴다. `setup`은 언어 저장소를 사용자 홈의 `.sentinel/sources`에 받고, 잠금 파일에 적힌 공식 주소·지문으로만 언어 SDK를 내려받은 뒤, 도구 묶음을 설치하고 두 설정 파일을 쓴다. 세 언어를 모두 준비하면 약 2GB를 내려받으므로 실행 전에 반드시 사용자 승인을 받는다. 언어는 `--language`를 반복해 지정하며, 프로젝트에 쓰인 언어만 고르는 것이 보통이다.
 
 ```bash
 # $SENTINEL_EXECUTABLE은 사용자가 선택한 신뢰된 실행 파일, setup은 첫 실행 설정 명령, --project와 $SENTINEL_PROJECT는 명시된 프로젝트 루트, --language와 $SENTINEL_LANGUAGE는 준비할 언어 하나(반복 가능), --format json은 JSON 결과 요청이다.

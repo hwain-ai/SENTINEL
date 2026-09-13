@@ -17,7 +17,7 @@ from .workspace import MAX_CONFIG_BYTES, is_exact_semver, read_json
 
 SETUP_LANGUAGES = {"python": "SENTINEL_PY", "typescript": "SENTINEL_TS", "java": "SENTINEL_JAVA"}
 SOURCE_REPOSITORIES = {
-    language: f"https://github.com/hwain-hwang/{repository}.git"
+    language: f"https://github.com/hwain-ai/{repository}.git"
     for language, repository in SETUP_LANGUAGES.items()
 }
 TOOL_DIRECTORY = "sentinel-tool"
@@ -254,7 +254,7 @@ def run_setup(args) -> Tuple[Dict[str, object], int]:
     gate = override_gate(DEFAULT_GATE, args.crap_max, args.mutation_min)
     tools = Path(args.tools).absolute() if args.tools else project / ".sentinel-tools"
     sources = Path(args.sources).absolute() if args.sources else default_sources()
-    languages = _unique(args.language)
+    languages = _unique(args.language) or sorted(SETUP_LANGUAGES)
     requirements = getattr(args, "python_requirements", None)
     if requirements is not None and "python" not in languages:
         raise SentinelError("usageError", "--python-requirements needs --language python", 3)

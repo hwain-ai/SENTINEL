@@ -1,6 +1,6 @@
 # 언어 도구 설치 연결에 남은 실행·정리 경계
 
-상태: 아래는 Go 통합 연결 전의 설계 검토 기록이다. 현재 구현 상태는 이 절과 [실제 Go 연결 기록](https://github.com/hwain-hwang/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)을 따른다. 플러그인 활성화 승인 문서는 아니다.
+상태: 아래는 Go 통합 연결 전의 설계 검토 기록이다. 현재 구현 상태는 이 절과 [실제 Go 연결 기록](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)을 따른다. 플러그인 활성화 승인 문서는 아니다.
 
 현재 결론(2026-09-10): 사용자는 A안인 통합 SENTINEL의 컨테이너 생성·시간 제한·직접 정리를 확정했다. Go의 설치된 통합 명령은 이미 이 구조로 실제 결과 반환·제한 실행·취소와 원본 보존·소유 컨테이너 0을 확인했다. 다른 언어도 같은 경계로 연결한다. Java 빌드 준비 및 Java·Python의 새 빌드·테스트 도구는 공식 Maven Central·PyPI 기반 최초 준비를 승인받았으므로 더 이상 사용자 답변 대기가 아니다. 상세 범위는 [승인된 설계](../../docs/design-docs/2026-09-sentinel-unified-entry.md)의 공식 배포처 준비 절을 따른다.
 
@@ -44,4 +44,4 @@ Go에서는 실제 native check와 상세 비교 실행을 구분한다. 상세 
 
 ## 검증 기록
 
-2026-09-09: Go 상세 비교의 독립 증거 검토는 Approved/Critical 0/Important 0/Minor 0이다. [실제 비교 기록](https://github.com/hwain-hwang/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)의 완료 범위는 유지한다. 이후 보류한 테스트 초안을 제품 목록에서 제외하고 원래 source·tests·README·패키지 파일의 바이트 일치를 확인했다. 새 전체 회귀 시험 259개는 12.049초에 통과했다. 이는 기존 코드 보존의 검증이지 새 회수 방식의 구현·검증이 아니다.
+2026-09-09: Go 상세 비교의 독립 증거 검토는 Approved/Critical 0/Important 0/Minor 0이다. [실제 비교 기록](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)의 완료 범위는 유지한다. 이후 보류한 테스트 초안을 제품 목록에서 제외하고 원래 source·tests·README·패키지 파일의 바이트 일치를 확인했다. 새 전체 회귀 시험 259개는 12.049초에 통과했다. 이는 기존 코드 보존의 검증이지 새 회수 방식의 구현·검증이 아니다.

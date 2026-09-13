@@ -1,9 +1,9 @@
 {
   "name": "sentinel",
   "version": "0.1.0",
-  "description": "이미 설치된 신뢰할 수 있는 SENTINEL로 검사 범위와 설치 상태를 확인하거나 기본 검사를 요청합니다.",
+  "description": "이미 설치된 신뢰할 수 있는 SENTINEL로 Python·TypeScript·Java 프로젝트의 검사 범위와 설치 상태를 확인하거나 기본 검사를 요청합니다.",
   "author": {
-    "name": "Cognet9 Official"
+    "name": "hwain-ai"
   },
   "skills": "./skills/"
 }

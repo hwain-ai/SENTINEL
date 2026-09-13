@@ -92,8 +92,8 @@ RISK(security): 같은 host의 Docker/커널은 신뢰 기반이다. 이 시험�
 ## 변경이력
 
 - 2026-09-10 | 실행 책임과 공식 준비 신뢰 확정 | 변경: 사용자 승인에 따라 통합 SENTINEL의 컨테이너 수명 관리와 Maven Central·PyPI 최초 준비 범위를 명시 | 검증: 승인 문면을 실행 계획과 대조. 공급자 서명·실제 프로젝트 통과·운영 허용으로 확대 해석하지 않음.
-- 2026-09-09 | Go 설치·격리 기반의 실패 처리 검증 완료 | 변경: 입력 검사부터 종료 후 검사까지 취소 상태 유지, 기존 회수 실패 보존, 신호 처리기 복원과 경로 오류 비공개 처리 | 검증: 전체216 tests/10.962초, 재설치 source 일치, 독립 후속 ACCEPT, Go 실제 격리10종·복구와 공통 재시험·마지막 컨테이너0. [실제 관측과 한계](https://github.com/hwain-hwang/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)를 기준으로 전체 backend 비교·admission·plugin은 미완료로 유지.
-- 2026-09-09 | Task 2b 승인 이후 Go 독립 입력 연결 | 변경: 네 content-addressed root와 Go 전용 제한 profile을 공통 OCI lifecycle에 연결, 기존 no-host API 유지 | 검증: Task2b 최종 독립 승인과 새 설치본 재시험, 전체199 tests, Go 원래 make build·입력 보존. Go 전체 비교·운영 admission·plugin은 미완료이며 [실제 관측](https://github.com/hwain-hwang/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)에 분리 기록.
+- 2026-09-09 | Go 설치·격리 기반의 실패 처리 검증 완료 | 변경: 입력 검사부터 종료 후 검사까지 취소 상태 유지, 기존 회수 실패 보존, 신호 처리기 복원과 경로 오류 비공개 처리 | 검증: 전체216 tests/10.962초, 재설치 source 일치, 독립 후속 ACCEPT, Go 실제 격리10종·복구와 공통 재시험·마지막 컨테이너0. [실제 관측과 한계](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)를 기준으로 전체 backend 비교·admission·plugin은 미완료로 유지.
+- 2026-09-09 | Task 2b 승인 이후 Go 독립 입력 연결 | 변경: 네 content-addressed root와 Go 전용 제한 profile을 공통 OCI lifecycle에 연결, 기존 no-host API 유지 | 검증: Task2b 최종 독립 승인과 새 설치본 재시험, 전체199 tests, Go 원래 make build·입력 보존. Go 전체 비교·운영 admission·plugin은 미완료이며 [실제 관측](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)에 분리 기록.
 - 2026-09-09 | Task 2b 실행 연결 검증 및 최종 검토 대기 | 변경: raw image identity와 실제 container 생성·검사·회수, 고정 권한·자원과 취소 경계 구현 | 검증: 최신136 tests, 설치본의 filesystem·environment·network·cgroup·timeout·escape·OOM·PID·CPU·overflow·SIGINT 및 owned container 0. 독립 검토와 Task2c native input 연결은 진행 중
 - 2026-09-09 | Task 2 사전 검증 경계 | 변경: 기존 저장소 수정 없이 외부 승인 lock을 받는 읽기 전용 OCI 준비 API, 게시·취소 경계와 별도 runtime-root 필요성을 명시 | 검증: root의 최종114-test·설치본 Docker 조회·파일/FD/취소 반례 시험과 독립 v3 spec/quality 승인. 운영 admission·native bundle·plugin은 미완료
 

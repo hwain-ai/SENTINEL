@@ -83,7 +83,7 @@ Strict 인증은 backend가 표시하는 자체 점수를 믿지 않는다. SENT
 |공통규칙-02|3.1, 7|기존 mutation backend와 최소 bridge, 자체 engine 없음|
 |공통규칙-03|6.4, 7.4|raw CRAP 8.0 이하, 모든 in-scope mutant killed|
 |공통규칙-04|2.2, 5.2|process CLI·JSON·exit code 경계|
-|공통규칙-05|3.6, 10.4|`hwain-hwang`의 private repo와 최소 권한 CI|
+|공통규칙-05|3.6, 10.4|`hwain-ai`의 private repo와 최소 권한 CI|
 |공통규칙-06|4.3, 7.1|upstream 고정 기준점과 read-only 원본|
 |공통규칙-07|10.4|Git 작업은 생성될 각 child repo 안에서만 수행|
 |공통규칙-08|10.1, 10.2|production 동작마다 failing test와 negative fixture 선행|

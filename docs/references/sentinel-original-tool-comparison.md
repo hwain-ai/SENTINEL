@@ -5,8 +5,8 @@ status: current
 owner: Claude Code (사용자 승인 하에 작성)
 related:
   - docs/exec-plans/active/2026-09-sentinel-unified-entry.md
-  - https://github.com/hwain-hwang/SENTINEL_PY/blob/main/docs/sentinel-python-native-validation.md
-  - https://github.com/hwain-hwang/SENTINEL_TS/blob/main/docs/sentinel-typescript-native-validation.md
+  - https://github.com/hwain-ai/SENTINEL_PY/blob/main/docs/sentinel-python-native-validation.md
+  - https://github.com/hwain-ai/SENTINEL_TS/blob/main/docs/sentinel-typescript-native-validation.md
 ---
 
 # SENTINEL 과 원본 변이 도구의 결과 비교

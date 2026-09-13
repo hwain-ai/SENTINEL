@@ -2,8 +2,8 @@
 
 SENTINEL은 하나의 명령으로 등록된 프로젝트를 검사하고, 필요한 언어 도구만 버전을 고정해 설치하는 로컬 실행기입니다.
 
-- 현재 확인한 범위: 공통 명령과 공개 Go 프로젝트 한 개의 실험 연결입니다.
-- 아직 진행 중인 범위: 나머지 언어의 실제 프로젝트 검증·연결과 Codex·Claude Code 플러그인 설치 확인입니다. 정식 품질 인증은 제공하지 않습니다.
+- 플러그인이 지원하는 언어: Python, TypeScript, Java 세 가지입니다. 각 언어는 공개 프로젝트에서 원본 도구와 결과를 대조해 확인했습니다. Go 는 실험 연결만 있고 Clojure 는 미연결이라 플러그인 범위에 넣지 않습니다.
+- 아직 진행 중인 범위: CI 로 검증된 도구 묶음만 기본 `check` 가 받아들이는 승인 절차입니다. 그 전까지 기본 `check` 는 거부되고 `--experimental` 로만 실제 판정을 받습니다. 정식 품질 인증은 제공하지 않습니다.
 - 최신 진행 상황: [완료한 것·현재 작업·남은 세 묶음](docs/exec-plans/active/2026-09-sentinel-unified-entry.md#현재-진행-순서)에서 확인합니다. 자세한 시험 기록은 사용법과 분리합니다.
 
 ## 현재 제공하는 것
@@ -23,7 +23,7 @@ SDK는 해당 언어의 프로그램을 빌드하고 실행하는 도구 모음�
 
 ## 첫 실행 설정
 
-sentinel 명령을 설치한 뒤 검사할 프로젝트에서 한 번 실행합니다. 언어는 python, typescript, java 중에서 반복 지정합니다.
+sentinel 명령을 설치한 뒤 검사할 프로젝트에서 한 번 실행합니다. 언어는 python, typescript, java 중에서 반복 지정하고, 생략하면 세 언어를 모두 준비합니다.
 
 ```bash
 # setup = 첫 실행 설정; --project . = 현재 프로젝트; --language = 준비할 언어(반복 가능)
@@ -33,7 +33,7 @@ sentinel 명령을 설치한 뒤 검사할 프로젝트에서 한 번 실행합�
 
 setup은 다음을 순서대로 합니다.
 
-1. 언어 저장소를 `~/.sentinel/sources/SENTINEL_PY` 같은 폴더에 둡니다. 없으면 github.com/hwain-hwang 의 같은 이름 저장소를 git clone 합니다. 다른 위치는 `--sources`로 지정합니다.
+1. 언어 저장소를 `~/.sentinel/sources/SENTINEL_PY` 같은 폴더에 둡니다. 없으면 github.com/hwain-ai 의 같은 이름 저장소를 git clone 합니다. 다른 위치는 `--sources`로 지정합니다.
 2. 각 저장소의 `sentinel-tool/setup.sh`를 실행합니다. 이 스크립트는 잠금 파일의 공식 주소·SHA-256으로 언어 SDK를 내려받고 검사기를 준비합니다. 이미 준비돼 있으면 확인만 하고 지나갑니다. 세 언어를 모두 준비하면 약 2GB를 내려받습니다.
 3. 저장소의 `sentinel-tool/sentinel-tool` 실행 파일과 저장소 위치를 적은 `home` 파일로 도구 묶음을 만들어 `--tools`(기본 프로젝트의 .sentinel-tools)에 설치합니다.
 4. `sentinel.workspace.json`에 언어별 모듈과 `gate`(crapMax, mutationMin)를 씁니다. 같은 언어의 기존 모듈은 바꾸고 다른 언어 모듈은 유지합니다.
@@ -153,7 +153,7 @@ Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽�
 
 ## 개발자 참고
 
-실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [Go 검증 기록](https://github.com/hwain-hwang/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 이 저장소 자체가 마켓플레이스입니다. Claude Code는 `claude plugin marketplace add hwain-hwang/SENTINEL` 뒤 `claude plugin install sentinel@sentinel`, Codex는 `codex plugin marketplace add hwain-hwang/SENTINEL` 뒤 `codex plugin add sentinel`로 설치합니다. 플러그인은 지침만 담으므로 sentinel 명령과 setup은 따로 실행해야 합니다.
+실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [Go 검증 기록](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 이 저장소 자체가 마켓플레이스입니다. Claude Code는 `claude plugin marketplace add hwain-ai/SENTINEL` 뒤 `claude plugin install sentinel@sentinel`, Codex는 `codex plugin marketplace add hwain-ai/SENTINEL` 뒤 `codex plugin add sentinel`로 설치합니다. 플러그인은 지침만 담으므로 sentinel 명령과 setup은 따로 실행해야 합니다.
 
 ## 남은 단계
 
