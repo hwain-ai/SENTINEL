@@ -41,6 +41,16 @@ setup은 다음을 순서대로 합니다.
 6. Python 프로젝트의 테스트가 외부 패키지를 쓰면 `--python-requirements requirements.txt`(프로젝트 기준 상대 경로)를 함께 줍니다. 검사기의 고정 Python으로 그 목록을 wheel 만으로 `<프로젝트>/.sentinel-deps`에 설치하고, 검사 때 PYTHONPATH에 올립니다. 이 폴더는 분석·변이 대상이 아니므로 `.gitignore`에 넣습니다. 캐시에 없으면 공식 인덱스에서 내려받으며, 목록에 지문이 없으면 지문 검증도 없습니다.
 7. Maven 프로젝트(`pom.xml`)는 `--java-dependencies`를 함께 줍니다. 검사기의 고정 JDK·Maven으로 그 프로젝트의 기본 시험 빌드(`mvn test`)를 온라인으로 한 번 실행해 빌드 플러그인과 의존성을 `<프로젝트>/.sentinel-m2`에 받습니다. 이후 검사는 이 폴더만으로 오프라인 실행되며, 폴더가 없으면 검사기의 잠긴 저장소만 쓰므로 외부 의존성이 있는 프로젝트는 검사가 실패합니다. 이 폴더도 `.gitignore`에 넣습니다.
 
+## 원본 도구보다 kill 수가 적게 나오는 이유
+
+SENTINEL 은 변이를 잡은 테스트 실패가 단언(assert) 실패일 때만 killed 로 셉니다. 테스트가 예외(TypeError, NullPointerException 등)로 죽은 변이는 runtimeError 로 따로 세고 kill 비율에 넣지 않습니다. mutmut·Stryker·mutate4java 는 이 둘을 구분하지 않고 모두 killed 로 세므로, 같은 프로젝트를 원본 도구로 돌린 killed 수는 SENTINEL 의 killed 와 runtimeError 를 더한 값과 같습니다. 2026-09-13 에 공개 프로젝트 3개로 확인한 값은 다음과 같습니다(ItsDangerous 는 mutmut 3 이 인자를 None 으로 바꾸는 변이를 많이 만들어 runtimeError 가 많습니다).
+
+|프로젝트|SENTINEL killed + runtimeError|원본 도구 killed|
+|---|---|---|
+|ItsDangerous 2.2.0 (Python, 변이 567)|72 + 346 = 418|mutmut 418|
+|unjs/scule v1.3.0 (TypeScript, 변이 81)|72 + 1 = 73|Stryker 75 (차이 2개는 SENTINEL 이 아직 못 잡는 모듈 최상위 상수 변이)|
+|Commons CLI 1.10.0 (Java, 변경 파일 1개, 변이 10)|5 + 5 = 10|mutate4java 10|
+
 ## 변경분만 검사
 
 `check --changed`는 git 으로 변경된 파일만 검사 대상으로 넘깁니다. 기준은 `--changed-base`(기본 HEAD)와 작업 트리의 차이이며, 아직 추가하지 않은 새 파일도 포함하고 지운 파일은 제외합니다. 각 모듈에는 그 모듈 폴더 안의 변경 파일만 모듈 기준 상대 경로로 전달되고, 변경 파일이 하나도 없는 모듈은 도구를 실행하지 않고 `noChanges`(종료 0)로 표시합니다. 언어 도구는 전달받은 경로 중 생산 코드만 CRAP·변이 대상으로 삼고 테스트는 전체를 실행하며, 생산 코드 변경이 없으면 판정할 대상이 없으므로 통과로 응답합니다. 프로젝트가 git 작업 트리가 아니거나 기준 ref 가 없으면 종료 3 으로 거부하고, Go 모듈에는 아직 지원하지 않습니다.
