@@ -7,7 +7,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Sequence
 
 from .bundle import Bundle
 from .errors import SentinelError
@@ -245,8 +245,15 @@ def _parse_response(raw: bytes, request: Dict[str, object], bundle: Bundle, proc
     return Observation(status, response["exitCode"])
 
 
-def run_check(module: Module, project: Path, bundle: Bundle, timeout: float, gate: Gate = DEFAULT_GATE) -> Observation:
-    request = {
+def run_check(
+    module: Module,
+    project: Path,
+    bundle: Bundle,
+    timeout: float,
+    gate: Gate = DEFAULT_GATE,
+    changed_files: Optional[Sequence[str]] = None,
+) -> Observation:
+    request: Dict[str, object] = {
         "protocolVersion": "sentinel-tool-protocol-v1",
         "requestId": str(uuid.uuid4()),
         "command": "check",
@@ -256,6 +263,8 @@ def run_check(module: Module, project: Path, bundle: Bundle, timeout: float, gat
         "config": str(module.config.absolute()) if module.config else None,
         "gate": gate.as_json(),
     }
+    if changed_files is not None:
+        request["changedFiles"] = list(changed_files)
     payload = json.dumps(request, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     executable = bundle.source / bundle.entrypoint
     try:

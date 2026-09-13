@@ -39,6 +39,15 @@ setup은 다음을 순서대로 합니다.
 4. `sentinel.workspace.json`에 언어별 모듈과 `gate`(crapMax, mutationMin)를 씁니다. 같은 언어의 기존 모듈은 바꾸고 다른 언어 모듈은 유지합니다.
 5. python·typescript 검사기가 읽는 `sentinel.config.json`이 없으면 기본값(소스 `src/`, 테스트 `tests/` 또는 `test/`)으로 만듭니다. 이미 있으면 건드리지 않습니다. 결과의 projectConfig가 created이면 실제 폴더 구조에 맞게 고칩니다.
 
+## 변경분만 검사
+
+`check --changed`는 git 으로 변경된 파일만 검사 대상으로 넘깁니다. 기준은 `--changed-base`(기본 HEAD)와 작업 트리의 차이이며, 아직 추가하지 않은 새 파일도 포함하고 지운 파일은 제외합니다. 각 모듈에는 그 모듈 폴더 안의 변경 파일만 모듈 기준 상대 경로로 전달되고, 변경 파일이 하나도 없는 모듈은 도구를 실행하지 않고 `noChanges`(종료 0)로 표시합니다. 언어 도구는 전달받은 경로 중 생산 코드만 CRAP·변이 대상으로 삼고 테스트는 전체를 실행하며, 생산 코드 변경이 없으면 판정할 대상이 없으므로 통과로 응답합니다. 프로젝트가 git 작업 트리가 아니거나 기준 ref 가 없으면 종료 3 으로 거부하고, Go 모듈에는 아직 지원하지 않습니다.
+
+```bash
+# --changed = 기준 커밋 이후 바뀐 파일만; --changed-base main = 기준을 main 브랜치로
+.venv/bin/sentinel check --project . --experimental --changed --changed-base main --timeout-seconds 900 --format json
+```
+
 기준값은 정수 또는 소수점 두 자리까지의 문자열입니다. crapMax는 0보다 커야 하고 mutationMin은 0 이상 100 이하입니다. `check --crap-max 10`처럼 한 번만 다른 값으로 돌릴 수도 있습니다. 기준값은 검사 요청 JSON의 `gate` 항목으로 각 언어 도구에 전달되며, 통합 실행기는 판정하지 않습니다.
 
 ## 통합 명령 설치
@@ -116,7 +125,7 @@ Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽�
 
 처음 확인한 뒤 원본 파일이 바뀔 수 있으므로 복사할 때도 파일별 지문과 누적 크기를 쓰기 전에 다시 확인합니다. 바뀐 내용을 발견하면 설치를 중단하고 기존 설치는 유지합니다.
 
-일반 실행 파일 형식의 실험 실행에서 도구는 표준 입력으로 JSON 요청 하나를 받고, 표준 출력으로 JSON 응답 하나를 내보냅니다. 요청에는 protocolVersion, 새 requestId, command(check), moduleId, language, projectRoot(선택 모듈의 절대 경로), config(설정 파일 절대 경로 또는 null), gate(crapMax·mutationMin 문자열)가 있습니다. 작업 디렉터리도 선택한 모듈입니다. 응답은 protocolVersion, requestId, command, moduleId, language, toolVersion, status, exitCode, passed만 허용하며 요청과 도구의 신원이 일치해야 합니다. stdout에 로그를 섞으면 계약 위반입니다.
+일반 실행 파일 형식의 실험 실행에서 도구는 표준 입력으로 JSON 요청 하나를 받고, 표준 출력으로 JSON 응답 하나를 내보냅니다. 요청에는 protocolVersion, 새 requestId, command(check), moduleId, language, projectRoot(선택 모듈의 절대 경로), config(설정 파일 절대 경로 또는 null), gate(crapMax·mutationMin 문자열)가 있고, `check --changed`일 때만 changedFiles(모듈 기준 상대 경로 목록)가 붙습니다. 작업 디렉터리도 선택한 모듈입니다. 응답은 protocolVersion, requestId, command, moduleId, language, toolVersion, status, exitCode, passed만 허용하며 요청과 도구의 신원이 일치해야 합니다. stdout에 로그를 섞으면 계약 위반입니다.
 
 ## 결과 해석과 안전 경계
 

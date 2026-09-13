@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Sequence
 
 from . import __version__
 from .bundle import Bundle, install_bundle, validate_installed_bundle
+from .changes import changed_files, module_changes
 from .errors import SentinelError
 from .gate import override_gate
 from .native_go import is_native_go, prepare_native_go, run_native_go
@@ -80,6 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
     check = commands.add_parser("check")
     _workspace_options(check, include_timeout=True)
     check.add_argument("--experimental", action="store_true")
+    check.add_argument("--changed", action="store_true")
+    check.add_argument("--changed-base", default="HEAD")
     _gate_options(check)
     setup = commands.add_parser("setup")
     setup.add_argument("--project")
@@ -197,6 +200,13 @@ def _run_workspace(args: argparse.Namespace) -> int:
         for module in modules
         if is_native_go(bundles[module.module_id])
     ]
+    changes: Dict[str, List[str]] = {}
+    changed_mode = getattr(args, "changed", False)
+    if changed_mode:
+        if native_modules:
+            raise SentinelError("usageError", "changed mode is not supported for native Go modules", 3)
+        changed = changed_files(project, getattr(args, "changed_base", "HEAD"))
+        changes = {module.module_id: module_changes(module, changed) for module in modules}
     if native_modules and args.timeout_seconds > 900:
         raise SentinelError(
             "usageError",
@@ -231,8 +241,18 @@ def _run_workspace(args: argparse.Namespace) -> int:
         for module in modules:
             if module.module_id in native_prepared:
                 observation = run_native_go(native_prepared[module.module_id], args.timeout_seconds)
+            elif changed_mode and not changes[module.module_id]:
+                # Nothing under this module changed, so no tool is started and nothing is judged.
+                observation = Observation("noChanges", 0)
             else:
-                observation = run_check(module, project, bundles[module.module_id], args.timeout_seconds, gate)
+                observation = run_check(
+                    module,
+                    project,
+                    bundles[module.module_id],
+                    args.timeout_seconds,
+                    gate,
+                    changes.get(module.module_id) if changed_mode else None,
+                )
             observations.append(observation)
             if observation.cancellation_requested:
                 while len(observations) < len(modules):
