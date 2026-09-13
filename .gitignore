@@ -7,3 +7,4 @@ dist/
 .toolchain/
 .sentinel-tools/
 .weapon/
+.claude/
