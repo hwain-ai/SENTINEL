@@ -1,4 +1,4 @@
-# 통합 실행기 자체 시험. 표준 라이브러리만 쓰므로 Python 하나면 된다.
+# 통합 실행기 자체 시험과 승인 목록 검증. 표준 라이브러리만 쓰므로 Python 하나면 된다.
 name: ci
 
 on:
@@ -21,3 +21,11 @@ jobs:
       - name: Validate the plugin manifests
         run: |
           python3 -c "import json; json.load(open('.claude-plugin/marketplace.json')); json.load(open('.agents/plugins/marketplace.json')); json.load(open('plugins/sentinel/.claude-plugin/plugin.json')); json.load(open('plugins/sentinel/.codex-plugin/plugin.json'))"
+      - name: Lint the admission list (offline)
+        run: python3 scripts/admission.py lint
+      - name: Verify the admission list against GitHub
+        # The language repositories are private, so this needs a read token stored as ADMISSION_READ_TOKEN.
+        if: ${{ secrets.ADMISSION_READ_TOKEN != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.ADMISSION_READ_TOKEN }}
+        run: python3 scripts/admission.py verify
