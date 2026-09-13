@@ -46,10 +46,19 @@ def changed_files(project: Path, base: str) -> List[Path]:
     for entry in raw.split(b"\0"):
         if not entry:
             continue
-        candidate = top_path / os.fsdecode(entry)
+        relative = os.fsdecode(entry)
+        if _tool_owned(relative):
+            continue
+        candidate = top_path / relative
         if candidate.is_file() and not candidate.is_symlink():
             found.append(candidate.absolute())
     return sorted(set(found))
+
+
+def _tool_owned(relative: str) -> bool:
+    """SENTINEL's own untracked folders (.sentinel-tools, .sentinel-deps, .sentinel-m2, .sentinel) are never changes."""
+
+    return any(part.startswith(".sentinel") for part in relative.split("/"))
 
 
 def module_changes(module: Module, changed: Sequence[Path]) -> List[str]:

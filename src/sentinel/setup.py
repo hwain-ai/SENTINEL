@@ -28,6 +28,8 @@ TOOL_HOME = "home"
 PROJECT_CONFIG = "sentinel.config.json"
 # Where a Python project's own test requirements are installed by the checker's launcher.
 PYTHON_DEPENDENCY_DIRECTORY = ".sentinel-deps"
+# Where a Maven project's build dependencies are warmed by the checker's launcher for offline checks.
+JAVA_DEPENDENCY_DIRECTORY = ".sentinel-m2"
 # Languages whose checker reads a per-project config next to the workspace file.
 CONFIGURED_LANGUAGES = ("python", "typescript")
 DEFAULT_PROJECT_MODULES = {
@@ -143,7 +145,21 @@ def _install_python_requirements(repository: Path, project: Path, requirements: 
     return _forward([str(launcher), "deps", str(target), str(requirement_path)], repository)
 
 
-def _setup_language(language: str, sources: Path, tools: Path, project: Path, python_requirements: Optional[str]) -> Dict[str, object]:
+def _install_java_dependencies(repository: Path, project: Path) -> bool:
+    """Run the project's default test build online once so <project>/.sentinel-m2 serves later offline checks."""
+
+    launcher = repository / "scripts" / "mvn.sh"
+    return _forward([str(launcher), "deps", str(project)], repository)
+
+
+def _setup_language(
+    language: str,
+    sources: Path,
+    tools: Path,
+    project: Path,
+    python_requirements: Optional[str],
+    java_dependencies: bool,
+) -> Dict[str, object]:
     result: Dict[str, object] = {"language": language}
     repository = sources / SETUP_LANGUAGES[language]
     if not repository.is_dir() and not _clone(language, repository):
@@ -165,6 +181,11 @@ def _setup_language(language: str, sources: Path, tools: Path, project: Path, py
             result["status"] = "requirementsFailed"
             return result
         result["pythonRequirements"] = python_requirements
+    if language == "java" and java_dependencies:
+        if not _install_java_dependencies(repository, project):
+            result["status"] = "dependenciesFailed"
+            return result
+        result["javaDependencies"] = JAVA_DEPENDENCY_DIRECTORY
     staging, digest = _stage_bundle(language, repository, tool_directory, tools, version)
     try:
         install_bundle(staging, digest, tools)
@@ -237,7 +258,13 @@ def run_setup(args) -> Tuple[Dict[str, object], int]:
     requirements = getattr(args, "python_requirements", None)
     if requirements is not None and "python" not in languages:
         raise SentinelError("usageError", "--python-requirements needs --language python", 3)
-    results = [_setup_language(language, sources, tools, project, requirements) for language in languages]
+    java_dependencies = bool(getattr(args, "java_dependencies", False))
+    if java_dependencies and "java" not in languages:
+        raise SentinelError("usageError", "--java-dependencies needs --language java", 3)
+    results = [
+        _setup_language(language, sources, tools, project, requirements, java_dependencies)
+        for language in languages
+    ]
     installed = {item["language"]: item for item in results if item["status"] == "installed"}
     passed = len(installed) == len(languages)
     project_config = None

@@ -37,8 +37,9 @@ setup은 다음을 순서대로 합니다.
 2. 각 저장소의 `sentinel-tool/setup.sh`를 실행합니다. 이 스크립트는 잠금 파일의 공식 주소·SHA-256으로 언어 SDK를 내려받고 검사기를 준비합니다. 이미 준비돼 있으면 확인만 하고 지나갑니다. 세 언어를 모두 준비하면 약 2GB를 내려받습니다.
 3. 저장소의 `sentinel-tool/sentinel-tool` 실행 파일과 저장소 위치를 적은 `home` 파일로 도구 묶음을 만들어 `--tools`(기본 프로젝트의 .sentinel-tools)에 설치합니다.
 4. `sentinel.workspace.json`에 언어별 모듈과 `gate`(crapMax, mutationMin)를 씁니다. 같은 언어의 기존 모듈은 바꾸고 다른 언어 모듈은 유지합니다.
-5. python·typescript 검사기가 읽는 `sentinel.config.json`이 없으면 기본값(소스 `src/`, 테스트 `tests/` 또는 `test/`)으로 만듭니다. 이미 있으면 건드리지 않습니다. 결과의 projectConfig가 created이면 실제 폴더 구조에 맞게 고칩니다.
+5. python·typescript 검사기가 읽는 `sentinel.config.json`이 없으면 기본값(소스 `src/`, 테스트 `tests/` 또는 `test/`)으로 만듭니다. 이미 있으면 건드리지 않습니다. 결과의 projectConfig가 created이면 실제 폴더 구조에 맞게 고칩니다. 생산도 테스트도 아닌 소스(docs/conf.py, build.config.ts 등)가 있어 검사가 unclassifiedSource 로 거부되면 그 모듈의 `excluded` 글롭 목록에 적습니다.
 6. Python 프로젝트의 테스트가 외부 패키지를 쓰면 `--python-requirements requirements.txt`(프로젝트 기준 상대 경로)를 함께 줍니다. 검사기의 고정 Python으로 그 목록을 wheel 만으로 `<프로젝트>/.sentinel-deps`에 설치하고, 검사 때 PYTHONPATH에 올립니다. 이 폴더는 분석·변이 대상이 아니므로 `.gitignore`에 넣습니다. 캐시에 없으면 공식 인덱스에서 내려받으며, 목록에 지문이 없으면 지문 검증도 없습니다.
+7. Maven 프로젝트(`pom.xml`)는 `--java-dependencies`를 함께 줍니다. 검사기의 고정 JDK·Maven으로 그 프로젝트의 기본 시험 빌드(`mvn test`)를 온라인으로 한 번 실행해 빌드 플러그인과 의존성을 `<프로젝트>/.sentinel-m2`에 받습니다. 이후 검사는 이 폴더만으로 오프라인 실행되며, 폴더가 없으면 검사기의 잠긴 저장소만 쓰므로 외부 의존성이 있는 프로젝트는 검사가 실패합니다. 이 폴더도 `.gitignore`에 넣습니다.
 
 ## 변경분만 검사
 
@@ -95,8 +96,8 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 .venv/bin/sentinel plan --project . --language python --format json
 # doctor = 설치 지문 확인. 검사기와 프로젝트 테스트는 실행하지 않음
 .venv/bin/sentinel doctor --project . --format json
-# check = 검사 요청; --experimental = 실험 호출 허용; --timeout-seconds 60 = 모듈 실행 제한 60초
-.venv/bin/sentinel check --project . --experimental --timeout-seconds 60 --format json
+# check = 검사 요청; --experimental = 실험 호출 허용; --timeout-seconds 7200 = 모듈당 실행 제한 7200초(생략하면 언어 도구 3600초, Go 900초, 최대 86400초)
+.venv/bin/sentinel check --project . --experimental --timeout-seconds 7200 --format json
 ```
 
 위 명령은 프로젝트와 이 패키지의 설치 위치가 같은 폴더라는 예시입니다. 다른 프로젝트에서는 설치한 sentinel 명령의 경로를 사용하고 --project에 검사할 폴더를 지정합니다. --config는 프로젝트 기준 workspace 설정 경로, --tools는 언어 도구를 보관한 폴더이며 생략 시 프로젝트 아래 .sentinel-tools를 사용합니다.

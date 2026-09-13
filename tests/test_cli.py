@@ -237,7 +237,7 @@ class WorkspaceTests(unittest.TestCase):
 
     def test_timeout_out_of_range_is_usage_error(self):
         workspace(self.project, [module("api", "python", "api")])
-        for value in ("0", "3601", "nan"):
+        for value in ("0", "86401", "nan"):
             with self.subTest(value=value):
                 completed = cli("check", "--project", str(self.project), "--timeout-seconds", value)
                 self.assertEqual(completed.returncode, 3)

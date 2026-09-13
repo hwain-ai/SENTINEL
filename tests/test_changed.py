@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 
 from test_cli import cli, install_bundle, make_bundle, module, workspace
+
+from sentinel.changes import changed_files
 from test_setup import TOOL_SCRIPT
 
 
@@ -98,6 +100,15 @@ class ChangedModeTests(unittest.TestCase):
         payload = json.loads(against_base.stdout)
         self.assertEqual([item["status"] for item in payload["results"]], ["noChanges", "qualityFailed"])
         self.assertEqual(self.request(self.typescript_home)["changedFiles"], ["src/w.ts"])
+
+    def test_sentinel_owned_untracked_folders_are_never_reported_as_changes(self):
+        (self.project / ".sentinel-deps" / "pkg").mkdir(parents=True)
+        (self.project / ".sentinel-deps" / "pkg" / "__init__.py").write_text("x = 1\n", encoding="utf-8")
+        (self.project / ".sentinel-tools").mkdir()
+        (self.project / ".sentinel-tools" / "bundle.json").write_text("{}\n", encoding="utf-8")
+        (self.project / "api" / "new.py").write_text("y = 2\n", encoding="utf-8")
+        found = [str(path.relative_to(self.project)) for path in changed_files(self.project, "HEAD")]
+        self.assertEqual(found, ["api/new.py", "sentinel.workspace.json"])
 
     def test_without_changed_flag_the_request_carries_no_change_list(self):
         completed = cli("check", "--project", str(self.project), "--tools", str(self.tools), "--experimental",

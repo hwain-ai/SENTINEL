@@ -46,13 +46,19 @@ class CliParser(argparse.ArgumentParser):
         self.exit(3, "sentinel: usageError: invalid arguments\n")
 
 
+# A full mutation run of a real project takes minutes to hours; the timeout is a safety net, not a budget.
+DEFAULT_TOOL_TIMEOUT_SECONDS = 3600.0
+# The native Go sandbox keeps its own hard limit.
+NATIVE_GO_MAX_TIMEOUT_SECONDS = 900.0
+
+
 def _timeout(value: str) -> float:
     try:
         parsed = float(value)
     except ValueError as error:
         raise argparse.ArgumentTypeError("timeout must be a number") from error
-    if not math.isfinite(parsed) or not 0 < parsed <= 3600:
-        raise argparse.ArgumentTypeError("timeout must be greater than 0 and no more than 3600")
+    if not math.isfinite(parsed) or not 0 < parsed <= 86400:
+        raise argparse.ArgumentTypeError("timeout must be greater than 0 and no more than 86400")
     return parsed
 
 
@@ -64,7 +70,8 @@ def _workspace_options(parser: argparse.ArgumentParser, include_timeout: bool = 
     parser.add_argument("--module", action="append", default=[])
     parser.add_argument("--format", choices=("text", "json"), default="text")
     if include_timeout:
-        parser.add_argument("--timeout-seconds", type=_timeout, default=60.0)
+        # Omitted: tool bundles get DEFAULT_TOOL_TIMEOUT_SECONDS, native Go its NATIVE_GO_MAX_TIMEOUT_SECONDS.
+        parser.add_argument("--timeout-seconds", type=_timeout, default=None)
 
 
 def _gate_options(parser: argparse.ArgumentParser) -> None:
@@ -92,6 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
     setup.add_argument("--language", action="append", default=[], choices=sorted(SETUP_LANGUAGES), required=True)
     setup.add_argument("--format", choices=("text", "json"), default="text")
     setup.add_argument("--python-requirements")
+    setup.add_argument("--java-dependencies", action="store_true")
     _gate_options(setup)
     install = commands.add_parser("install")
     install.add_argument("--bundle", required=True)
@@ -208,12 +216,14 @@ def _run_workspace(args: argparse.Namespace) -> int:
             raise SentinelError("usageError", "changed mode is not supported for native Go modules", 3)
         changed = changed_files(project, getattr(args, "changed_base", "HEAD"))
         changes = {module.module_id: module_changes(module, changed) for module in modules}
-    if native_modules and args.timeout_seconds > 900:
+    if native_modules and args.timeout_seconds is not None and args.timeout_seconds > NATIVE_GO_MAX_TIMEOUT_SECONDS:
         raise SentinelError(
             "usageError",
             "native Go timeout must be no more than 900 seconds",
             3,
         )
+    native_timeout = NATIVE_GO_MAX_TIMEOUT_SECONDS if args.timeout_seconds is None else args.timeout_seconds
+    tool_timeout = DEFAULT_TOOL_TIMEOUT_SECONDS if args.timeout_seconds is None else args.timeout_seconds
     native_prepared = {}
     native_failed = False
     for module in native_modules:
@@ -241,7 +251,7 @@ def _run_workspace(args: argparse.Namespace) -> int:
     try:
         for module in modules:
             if module.module_id in native_prepared:
-                observation = run_native_go(native_prepared[module.module_id], args.timeout_seconds)
+                observation = run_native_go(native_prepared[module.module_id], native_timeout)
             elif changed_mode and not changes[module.module_id]:
                 # Nothing under this module changed, so no tool is started and nothing is judged.
                 observation = Observation("noChanges", 0)
@@ -250,7 +260,7 @@ def _run_workspace(args: argparse.Namespace) -> int:
                     module,
                     project,
                     bundles[module.module_id],
-                    args.timeout_seconds,
+                    tool_timeout,
                     gate,
                     changes.get(module.module_id) if changed_mode else None,
                 )

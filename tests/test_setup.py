@@ -56,6 +56,16 @@ def fake_language_source(sources, repository, version="0.3.1", setup_exit=0):
         encoding="utf-8",
     )
     launcher.chmod(0o700)
+    maven = scripts / "mvn.sh"
+    maven.write_text(
+        "#!/usr/bin/bash\n"
+        "printf '%s\\n' \"$*\" >> \"$(dirname \"$0\")/../maven.log\"\n"
+        "[ \"$1\" = deps ] || exit 2\n"
+        "[ -f \"$2/pom.xml\" ] || exit 1\n"
+        "mkdir -p \"$2/.sentinel-m2\" && printf 'warmed\\n' > \"$2/.sentinel-m2/marker\"\n",
+        encoding="utf-8",
+    )
+    maven.chmod(0o700)
     return root
 
 
@@ -165,6 +175,20 @@ class SetupCommandTests(unittest.TestCase):
         self.assertEqual(missing.returncode, 5, missing.stdout)
         self.assertEqual(json.loads(missing.stdout)["results"][0]["status"], "requirementsFailed")
         wrong = self.setup("--language", "typescript", "--python-requirements", "requirements.txt")
+        self.assertEqual(wrong.returncode, 3, wrong.stdout)
+
+    def test_java_dependencies_are_warmed_into_the_project_maven_repository(self):
+        java_root = fake_language_source(self.sources, "SENTINEL_JAVA")
+        failed = self.setup("--language", "java", "--java-dependencies")
+        self.assertEqual(failed.returncode, 5, failed.stdout)
+        self.assertEqual(json.loads(failed.stdout)["results"][0]["status"], "dependenciesFailed")
+        (self.project / "pom.xml").write_text("<project/>\n", encoding="utf-8")
+        completed = self.setup("--language", "java", "--java-dependencies")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(json.loads(completed.stdout)["results"][0]["javaDependencies"], ".sentinel-m2")
+        self.assertEqual((self.project / ".sentinel-m2" / "marker").read_text(), "warmed\n")
+        self.assertEqual((java_root / "maven.log").read_text().splitlines(), [f"deps {self.project}"] * 2)
+        wrong = self.setup("--language", "python", "--java-dependencies")
         self.assertEqual(wrong.returncode, 3, wrong.stdout)
 
     def test_bootstrap_failure_or_missing_source_is_a_dependency_error_without_configs(self):
