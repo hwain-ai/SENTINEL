@@ -21,6 +21,10 @@ SENTINEL은 하나의 명령으로 등록된 프로젝트를 검사하고, 필�
 
 SDK는 해당 언어의 프로그램을 빌드하고 실행하는 도구 모음입니다. SENTINEL 명령의 설치와 언어 도구·SDK의 준비는 별개입니다.
 
+## 지원 플랫폼
+
+Linux(x86_64, arm64)와 macOS(Intel, Apple Silicon)에서 씁니다. Windows 는 WSL2 안에서 씁니다(Python 검사기의 고정 mutmut 이 네이티브 Windows 실행을 거부합니다). 언어 저장소마다 `scripts/toolchain.py`(표준 라이브러리만 쓰는 Python 실행기)가 플랫폼을 감지해 잠금 파일의 해당 항목으로 SDK 를 받고 지문을 대조하며, setup 은 이 실행기를 sentinel 자신의 인터프리터로 부릅니다. 언어 도구 묶음의 진입점이 Python 스크립트이면 check 도 같은 인터프리터(`-I -B`)로 실행하므로 `/usr/bin/python3` 가 없는 macOS 에서도 동작합니다. 세 언어 저장소의 CI 가 네 플랫폼(ubuntu-latest, ubuntu-24.04-arm, macos-15, macos-15-intel)에서 자체 시험을 돌립니다.
+
 ## 첫 실행 설정
 
 sentinel 명령을 설치한 뒤 검사할 프로젝트에서 한 번 실행합니다. 언어는 python, typescript, java 중에서 반복 지정하고, 생략하면 세 언어를 모두 준비합니다.

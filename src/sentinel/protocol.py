@@ -3,11 +3,12 @@ import os
 import selectors
 import signal
 import subprocess
+import sys
 import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Sequence
+from typing import Dict, List, Optional, Sequence
 
 from .bundle import Bundle
 from .errors import SentinelError
@@ -245,6 +246,22 @@ def _parse_response(raw: bytes, request: Dict[str, object], bundle: Bundle, proc
     return Observation(status, response["exitCode"])
 
 
+def _entrypoint_command(executable: Path) -> List[str]:
+    """A Python adapter runs under this interpreter (isolated, no bytecode); anything else runs as is.
+
+    The shebang route depends on /usr/bin/python3 existing, which is not given on macOS.
+    """
+
+    try:
+        with open(executable, "rb") as stream:
+            first_line = stream.readline(256)
+    except OSError:
+        return [str(executable)]
+    if first_line.startswith(b"#!") and b"python" in first_line:
+        return [sys.executable, "-I", "-B", str(executable)]
+    return [str(executable)]
+
+
 def run_check(
     module: Module,
     project: Path,
@@ -269,7 +286,7 @@ def run_check(
     executable = bundle.source / bundle.entrypoint
     try:
         process = subprocess.Popen(
-            [str(executable)],
+            _entrypoint_command(executable),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

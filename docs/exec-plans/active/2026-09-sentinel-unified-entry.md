@@ -315,6 +315,8 @@ Task 2에서 승인된 언어 범위에만 연결한다. Codex plugin manifest�
 
 ## 변경이력
 
+- 2026-09-13 | 공개 전환·MIT·다중 플랫폼 | 변경: 일곱 저장소를 공개로 바꾸고 MIT LICENSE 를 넣었으며 회사 흔적(컨테이너 라벨·작업공간 경로 검사)을 지웠다. Python·TypeScript·Java 검사기의 Linux 전용 bash 실행기를 표준 라이브러리 Python 실행기(`scripts/toolchain.py`)로 바꾸고 잠금 파일에 플랫폼별(linux-x86_64·linux-aarch64·darwin-x86_64·darwin-aarch64) SDK 지문을 넣었다. Windows 네이티브는 거부하고 WSL2 를 안내한다. 통합 실행기는 setup 이 그 실행기를 자기 인터프리터로 부르고, Python 진입점 묶음은 check 도 같은 인터프리터로 실행한다(macOS 에 `/usr/bin/python3` 가 없을 수 있음). 언어 저장소 CI 는 네 플랫폼 행렬로 돌며, 공개 저장소이므로 승인 목록 verify 는 워크플로 기본 토큰으로 항상 돈다 | 검증: PY·TS 네 플랫폼 CI 통과. JAVA 는 Linux 두 플랫폼 통과 뒤 macOS 에서 드러난 두 원인(JDK 17 macOS 의 SecureDirectoryStream 부재, 시험의 JAVA_HOME 고정)을 고쳐 재실행. 어댑터가 바뀐 세 언어는 새 CI 성공 commit 으로 승인 항목을 다시 추가한다.
+
 - 2026-09-13 | 5단계 완료: CI 기반 승인 구현 | 변경: `sentinel.admission` 모듈과 패키지 동봉 `admission.json`(sentinel-admission-v1), `--admission` 옵션, doctor 의 `admitted`, 기본 check 의 승인 판정과 certified, `scripts/admission.py`(add·verify·lint), SENTINEL CI 의 승인 목록 검증 단계, README·스킬·설계 문서 갱신. 첫 승인 3건(python 0.1.0, typescript 0.1.0, java 0.1.1) | 검증: 통합 시험 329개 통과. 실제 Python 프로젝트 setup→doctor(admitted)→check 종료 0·certified=true(41초), 빈 목록에서 backendNotAdmitted 6, 이전 공개 프로젝트 3개의 설치 묶음도 doctor 에서 admitted. 부수 발견: 잠긴 Python 트리에 PYTHONDONTWRITEBYTECODE 없이 실행한 흔적(.pyc)이 남아 지문 불일치가 났고 보관 아카이브에서 재추출해 복구.
 
 - 2026-09-13 | 5단계 착수: 저장소별 CI와 플러그인 범위 한정, main 병합 | 변경: 여섯 저장소의 feat 브랜치를 main에 fast-forward 병합하고 GitHub 계정 이름 변경(hwain-ai)을 코드·문서·마켓플레이스에 반영. 플러그인 범위를 Python·TypeScript·Java로 한정하고 `setup --language` 생략 시 세 언어를 준비. 다섯 저장소에 GitHub Actions 워크플로(`.github/workflows/ci.yml`) 추가. 새 clone에서 드러난 결함 세 가지 수정(Java bootstrap-m2.sh, TypeScript dist 권한 지문, Python 픽스처 미추적) | 검증: 다섯 워크플로 첫 실행 전부 통과. 승인(admission.json) 설계는 사용자 확인 대기.

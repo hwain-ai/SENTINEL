@@ -131,6 +131,15 @@ def _stage_bundle(language: str, repository: Path, tool_directory: Path, tools: 
     return staging, hashlib.sha256(manifest_bytes).hexdigest()
 
 
+def _launcher(repository: Path, script: str) -> List[str]:
+    """The checker's cross-platform Python launcher run by this interpreter, or the legacy shell script."""
+
+    python_launcher = repository / "scripts" / "toolchain.py"
+    if python_launcher.is_file():
+        return [sys.executable, "-I", "-B", str(python_launcher)]
+    return [str(repository / "scripts" / script)]
+
+
 def _install_python_requirements(repository: Path, project: Path, requirements: str) -> bool:
     """Install the project's requirements (wheels only) into <project>/.sentinel-deps; offline first."""
 
@@ -138,11 +147,11 @@ def _install_python_requirements(repository: Path, project: Path, requirements: 
     if not requirement_path.is_file():
         return False
     target = project / PYTHON_DEPENDENCY_DIRECTORY
-    launcher = repository / "scripts" / "uv.sh"
-    if _forward([str(launcher), "deps", str(target), str(requirement_path), "--offline"], repository):
+    launcher = _launcher(repository, "uv.sh")
+    if _forward([*launcher, "deps", str(target), str(requirement_path), "--offline"], repository):
         return True
     sys.stderr.write("sentinel: requirements are not cached, installing from the index online\n")
-    return _forward([str(launcher), "deps", str(target), str(requirement_path)], repository)
+    return _forward([*launcher, "deps", str(target), str(requirement_path)], repository)
 
 
 def _install_java_dependencies(repository: Path, project: Path) -> bool:
@@ -173,7 +182,10 @@ def _setup_language(
     if not is_exact_semver(version):
         result["status"] = "toolTemplateMissing"
         return result
-    if not _forward([str(tool_directory / TOOL_SETUP)], repository):
+    setup_command = [str(tool_directory / TOOL_SETUP)]
+    if (repository / "scripts" / "toolchain.py").is_file():
+        setup_command = [*_launcher(repository, TOOL_SETUP), "setup"]
+    if not _forward(setup_command, repository):
         result["status"] = "bootstrapFailed"
         return result
     if language == "python" and python_requirements is not None:
