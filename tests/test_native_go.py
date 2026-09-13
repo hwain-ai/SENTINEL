@@ -11,6 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+from sentinel.gate import DEFAULT_GATE
 from sentinel import bundle as bundle_api
 from sentinel.errors import SentinelError
 from sentinel.go_sandbox import GoRunObservation
@@ -345,7 +346,7 @@ class NativeCliTests(unittest.TestCase):
         legacy_bundle = bundle_api.Bundle(root, "python", "1.2.3", "b" * 64, "tool", {"tool": "d" * 64})
         output = StringIO()
         with (
-            mock.patch.object(cli, "_selected", return_value=(root, "allConfigured", [py_module, go_module], root / "tools")),
+            mock.patch.object(cli, "_selected", return_value=(root, "allConfigured", [py_module, go_module], root / "tools", DEFAULT_GATE)),
             mock.patch.object(cli, "_preflight", return_value=({"py": legacy_bundle, "go": native_bundle}, [cli._result(py_module, "ready", 0), cli._result(go_module, "ready", 0)], False)),
             mock.patch.object(cli, "prepare_native_go", side_effect=SentinelError("nativeGoFailed", "failed", 5)),
             mock.patch.object(cli, "run_check") as legacy_run,
@@ -369,7 +370,7 @@ class NativeCliTests(unittest.TestCase):
         prepared = object()
         output = StringIO()
         with (
-            mock.patch.object(cli, "_selected", return_value=(root, "allConfigured", [first, second], root / "tools")),
+            mock.patch.object(cli, "_selected", return_value=(root, "allConfigured", [first, second], root / "tools", DEFAULT_GATE)),
             mock.patch.object(cli, "_preflight", return_value=({"first": native_bundle, "second": legacy_bundle}, [cli._result(first, "ready", 0), cli._result(second, "ready", 0)], False)),
             mock.patch.object(cli, "prepare_native_go", return_value=prepared),
             mock.patch.object(cli, "run_native_go", return_value=Observation("cancelled", 8, True)) as native_run,
@@ -393,7 +394,7 @@ class NativeCliTests(unittest.TestCase):
         args = self._args()
         args.timeout_seconds = 901.0
         with (
-            mock.patch.object(cli, "_selected", return_value=(root, "allConfigured", [module], root / "tools")),
+            mock.patch.object(cli, "_selected", return_value=(root, "allConfigured", [module], root / "tools", DEFAULT_GATE)),
             mock.patch.object(cli, "_preflight", return_value=({"go": native_bundle}, [cli._result(module, "ready", 0)], False)),
             mock.patch.object(cli, "prepare_native_go") as prepare,
         ):
@@ -449,7 +450,7 @@ class NativeCliTests(unittest.TestCase):
             output = StringIO()
             error = StringIO()
             with (
-                mock.patch.object(cli, "_selected", return_value=(project, "allConfigured", modules, base)),
+                mock.patch.object(cli, "_selected", return_value=(project, "allConfigured", modules, base, DEFAULT_GATE)),
                 mock.patch.object(
                     cli,
                     "_preflight",
@@ -524,7 +525,7 @@ class NativeCliTests(unittest.TestCase):
             output = StringIO()
             error = StringIO()
             with (
-                mock.patch.object(cli, "_selected", return_value=(project, "allConfigured", modules, base)),
+                mock.patch.object(cli, "_selected", return_value=(project, "allConfigured", modules, base, DEFAULT_GATE)),
                 mock.patch.object(
                     cli,
                     "_preflight",

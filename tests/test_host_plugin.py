@@ -40,6 +40,8 @@ def run_template(template, project, *extra):
             arguments.extend((sys.executable, "-m", "sentinel"))
         elif argument == "$SENTINEL_PROJECT":
             arguments.append(str(project))
+        elif argument == "$SENTINEL_LANGUAGE":
+            arguments.append("python")
         else:
             arguments.append(argument)
     arguments.extend(extra)
@@ -87,13 +89,13 @@ class HostPluginStructureTests(unittest.TestCase):
         for capability in interface["capabilities"]:
             self.assertRegex(capability, "[가-힣]")
 
-    def test_skill_exposes_exactly_three_portable_command_templates(self):
+    def test_skill_exposes_exactly_four_portable_command_templates(self):
         commands = command_templates()
-        self.assertEqual(set(commands), {"plan", "doctor", "check"})
-        for command, arguments in commands.items():
+        self.assertEqual(set(commands), {"plan", "doctor", "check", "setup"})
+        for command in ("plan", "doctor", "check"):
             with self.subTest(command=command):
                 self.assertEqual(
-                    arguments,
+                    commands[command],
                     [
                         "$SENTINEL_EXECUTABLE",
                         command,
@@ -103,10 +105,23 @@ class HostPluginStructureTests(unittest.TestCase):
                         "json",
                     ],
                 )
+        self.assertEqual(
+            commands["setup"],
+            [
+                "$SENTINEL_EXECUTABLE",
+                "setup",
+                "--project",
+                "$SENTINEL_PROJECT",
+                "--language",
+                "$SENTINEL_LANGUAGE",
+                "--format",
+                "json",
+            ],
+        )
 
     def test_duplicate_documented_command_templates_are_rejected(self):
         skill_lines = SKILL_PATH.read_text(encoding="utf-8").splitlines()
-        for command in ("plan", "doctor", "check"):
+        for command in ("plan", "doctor", "check", "setup"):
             with self.subTest(command=command), tempfile.TemporaryDirectory() as directory:
                 copied = Path(directory) / "sentinel"
                 shutil.copytree(PLUGIN_ROOT, copied)

@@ -15,10 +15,31 @@ SENTINEL은 하나의 명령으로 등록된 프로젝트를 검사하고, 필�
 |install|신뢰하는 로컬 도구 묶음을 언어·버전·지문별 독립 폴더에 복사한다.|없음|
 |check|설치를 먼저 확인한다. 기본 상태에서는 실행을 거부한다.|없음|
 |check --experimental|명시적으로 실험 실행을 요청하면 선택한 도구들을 차례로 호출한다.|있음. 정식 인증은 하지 않음|
+|setup|언어 저장소·SDK·도구 묶음을 준비하고 두 설정 파일과 기준값을 쓴다. 처음 한 번, 또는 언어를 추가할 때 실행한다.|있음. git·언어 bootstrap 스크립트|
 
 모듈은 따로 검사할 프로젝트 폴더입니다. 예를 들어 Python 서버와 TypeScript 화면을 서로 다른 모듈로 등록할 수 있습니다. 전체 실행은 **등록된 모듈 전체**를 뜻하며, 저장소의 모든 언어나 파일을 자동으로 발견했다는 뜻이 아닙니다.
 
 SDK는 해당 언어의 프로그램을 빌드하고 실행하는 도구 모음입니다. SENTINEL 명령의 설치와 언어 도구·SDK의 준비는 별개입니다.
+
+## 첫 실행 설정
+
+sentinel 명령을 설치한 뒤 검사할 프로젝트에서 한 번 실행합니다. 언어는 python, typescript, java 중에서 반복 지정합니다.
+
+```bash
+# setup = 첫 실행 설정; --project . = 현재 프로젝트; --language = 준비할 언어(반복 가능)
+# --crap-max 8 = CRAP 상한(기본 8); --mutation-min 100 = 변이 최소 kill 비율 %(기본 100)
+.venv/bin/sentinel setup --project . --language python --language typescript --crap-max 8 --mutation-min 100
+```
+
+setup은 다음을 순서대로 합니다.
+
+1. 언어 저장소를 `~/.sentinel/sources/SENTINEL_PY` 같은 폴더에 둡니다. 없으면 github.com/hwain-hwang 의 같은 이름 저장소를 git clone 합니다. 다른 위치는 `--sources`로 지정합니다.
+2. 각 저장소의 `sentinel-tool/setup.sh`를 실행합니다. 이 스크립트는 잠금 파일의 공식 주소·SHA-256으로 언어 SDK를 내려받고 검사기를 준비합니다. 이미 준비돼 있으면 확인만 하고 지나갑니다. 세 언어를 모두 준비하면 약 2GB를 내려받습니다.
+3. 저장소의 `sentinel-tool/sentinel-tool` 실행 파일과 저장소 위치를 적은 `home` 파일로 도구 묶음을 만들어 `--tools`(기본 프로젝트의 .sentinel-tools)에 설치합니다.
+4. `sentinel.workspace.json`에 언어별 모듈과 `gate`(crapMax, mutationMin)를 씁니다. 같은 언어의 기존 모듈은 바꾸고 다른 언어 모듈은 유지합니다.
+5. python·typescript 검사기가 읽는 `sentinel.config.json`이 없으면 기본값(소스 `src/`, 테스트 `tests/` 또는 `test/`)으로 만듭니다. 이미 있으면 건드리지 않습니다. 결과의 projectConfig가 created이면 실제 폴더 구조에 맞게 고칩니다.
+
+기준값은 정수 또는 소수점 두 자리까지의 문자열입니다. crapMax는 0보다 커야 하고 mutationMin은 0 이상 100 이하입니다. `check --crap-max 10`처럼 한 번만 다른 값으로 돌릴 수도 있습니다. 기준값은 검사 요청 JSON의 `gate` 항목으로 각 언어 도구에 전달되며, 통합 실행기는 판정하지 않습니다.
 
 ## 통합 명령 설치
 
@@ -45,6 +66,7 @@ uv pip install --python .venv/bin/python --link-mode=copy .
 |---|---|
 |최상위 schemaVersion|고정 문자열 sentinel-workspace-v1|
 |최상위 modules|1개 이상 128개 이하의 모듈 목록|
+|최상위 gate|선택 항목. crapMax(기본 "8")와 mutationMin(기본 "100") 문자열|
 |모듈 id|영문자로 시작하는 영숫자·밑줄·하이픈 식별자, 최대 64자|
 |모듈 language|python, typescript, go, java, clojure 중 하나|
 |모듈 root|프로젝트 기준 상대 폴더 경로. 프로젝트 자체는 점 한 개로 지정한다.|
@@ -94,7 +116,7 @@ Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽�
 
 처음 확인한 뒤 원본 파일이 바뀔 수 있으므로 복사할 때도 파일별 지문과 누적 크기를 쓰기 전에 다시 확인합니다. 바뀐 내용을 발견하면 설치를 중단하고 기존 설치는 유지합니다.
 
-일반 실행 파일 형식의 실험 실행에서 도구는 표준 입력으로 JSON 요청 하나를 받고, 표준 출력으로 JSON 응답 하나를 내보냅니다. 요청에는 protocolVersion, 새 requestId, command(check), moduleId, language, projectRoot(선택 모듈의 절대 경로), config(설정 파일 절대 경로 또는 null)가 있습니다. 작업 디렉터리도 선택한 모듈입니다. 응답은 protocolVersion, requestId, command, moduleId, language, toolVersion, status, exitCode, passed만 허용하며 요청과 도구의 신원이 일치해야 합니다. stdout에 로그를 섞으면 계약 위반입니다.
+일반 실행 파일 형식의 실험 실행에서 도구는 표준 입력으로 JSON 요청 하나를 받고, 표준 출력으로 JSON 응답 하나를 내보냅니다. 요청에는 protocolVersion, 새 requestId, command(check), moduleId, language, projectRoot(선택 모듈의 절대 경로), config(설정 파일 절대 경로 또는 null), gate(crapMax·mutationMin 문자열)가 있습니다. 작업 디렉터리도 선택한 모듈입니다. 응답은 protocolVersion, requestId, command, moduleId, language, toolVersion, status, exitCode, passed만 허용하며 요청과 도구의 신원이 일치해야 합니다. stdout에 로그를 섞으면 계약 위반입니다.
 
 ## 결과 해석과 안전 경계
 
@@ -110,7 +132,7 @@ Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽�
 
 ## 개발자 참고
 
-실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](../docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [Go 검증 기록](../docs/references/sentinel-go-native-validation.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 아직 호스트에 활성화한 상태는 아닙니다.
+실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](../docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [Go 검증 기록](../docs/references/sentinel-go-native-validation.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 이 저장소 자체가 마켓플레이스입니다. Claude Code는 `claude plugin marketplace add hwain-hwang/SENTINEL` 뒤 `claude plugin install sentinel@sentinel`, Codex는 `codex plugin marketplace add hwain-hwang/SENTINEL` 뒤 `codex plugin add sentinel`로 설치합니다. 플러그인은 지침만 담으므로 sentinel 명령과 setup은 따로 실행해야 합니다.
 
 ## 남은 단계
 

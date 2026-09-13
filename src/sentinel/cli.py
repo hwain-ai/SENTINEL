@@ -9,8 +9,10 @@ from typing import Dict, List, Optional, Sequence
 from . import __version__
 from .bundle import Bundle, install_bundle, validate_installed_bundle
 from .errors import SentinelError
+from .gate import override_gate
 from .native_go import is_native_go, prepare_native_go, run_native_go
 from .protocol import Observation, run_check
+from .setup import SETUP_LANGUAGES, run_setup
 from .workspace import Module, load_workspace, select_modules
 
 
@@ -64,6 +66,11 @@ def _workspace_options(parser: argparse.ArgumentParser, include_timeout: bool = 
         parser.add_argument("--timeout-seconds", type=_timeout, default=60.0)
 
 
+def _gate_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--crap-max")
+    parser.add_argument("--mutation-min")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = CliParser(prog="sentinel")
     parser.add_argument("--version", action="version", version=__version__)
@@ -73,6 +80,15 @@ def build_parser() -> argparse.ArgumentParser:
     check = commands.add_parser("check")
     _workspace_options(check, include_timeout=True)
     check.add_argument("--experimental", action="store_true")
+    _gate_options(check)
+    setup = commands.add_parser("setup")
+    setup.add_argument("--project")
+    setup.add_argument("--config", default="sentinel.workspace.json")
+    setup.add_argument("--tools")
+    setup.add_argument("--sources")
+    setup.add_argument("--language", action="append", default=[], choices=sorted(SETUP_LANGUAGES), required=True)
+    setup.add_argument("--format", choices=("text", "json"), default="text")
+    _gate_options(setup)
     install = commands.add_parser("install")
     install.add_argument("--bundle", required=True)
     install.add_argument("--sha256", required=True)
@@ -107,11 +123,29 @@ def _emit(payload: Dict[str, object], output_format: str) -> None:
     _write(sys.stdout, "\n".join(lines) + "\n")
 
 
+def _emit_setup(payload: Dict[str, object], output_format: str) -> None:
+    if output_format == "json":
+        _write(sys.stdout, json.dumps(payload, separators=(",", ":"), sort_keys=True) + "\n")
+        return
+    gate = payload["gate"]
+    lines = [f"SENTINEL setup: exit {payload['exitCode']}, crapMax={gate['crapMax']} mutationMin={gate['mutationMin']}"]
+    for result in payload["results"]:
+        detail = f" {result['toolVersion']} {result['toolDigest']}" if result["status"] == "installed" else ""
+        lines.append(f"{result['language']}: {result['status']}{detail}")
+    if payload["workspaceConfig"]:
+        lines.append(f"workspace config: {payload['workspaceConfig']} written")
+    if payload["projectConfig"]:
+        lines.append(f"project config: sentinel.config.json {payload['projectConfig']}")
+    _write(sys.stdout, "\n".join(lines) + "\n")
+
+
 def _selected(args: argparse.Namespace) -> tuple:
-    project, modules = load_workspace(args.project or os.getcwd(), args.config)
+    project, modules, gate = load_workspace(args.project or os.getcwd(), args.config)
     selection, selected = select_modules(modules, args.language, args.module)
     tools = Path(args.tools).absolute() if args.tools else project / ".sentinel-tools"
-    return project, selection, selected, tools
+    if args.command == "check":
+        gate = override_gate(gate, args.crap_max, args.mutation_min)
+    return project, selection, selected, tools, gate
 
 
 def _preflight(modules: Sequence[Module], tools: Path) -> tuple:
@@ -138,7 +172,7 @@ def _aggregate_exit(observations: Sequence[Observation]) -> int:
 
 
 def _run_workspace(args: argparse.Namespace) -> int:
-    project, selection, modules, tools = _selected(args)
+    project, selection, modules, tools, gate = _selected(args)
     if args.command == "plan":
         payload = _envelope("plan", selection, [_result(item, "planned", 0) for item in modules], True, 0)
         _emit(payload, args.format)
@@ -198,7 +232,7 @@ def _run_workspace(args: argparse.Namespace) -> int:
             if module.module_id in native_prepared:
                 observation = run_native_go(native_prepared[module.module_id], args.timeout_seconds)
             else:
-                observation = run_check(module, project, bundles[module.module_id], args.timeout_seconds)
+                observation = run_check(module, project, bundles[module.module_id], args.timeout_seconds, gate)
             observations.append(observation)
             if observation.cancellation_requested:
                 while len(observations) < len(modules):
@@ -226,6 +260,10 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
             bundle = install_bundle(Path(args.bundle), args.sha256, Path(args.tools))
             _write(sys.stdout, f"installed {bundle.language} {bundle.version} {bundle.digest}\n")
             return 0
+        if args.command == "setup":
+            payload, exit_code = run_setup(args)
+            _emit_setup(payload, args.format)
+            return exit_code
         return _run_workspace(args)
     except SentinelError as error:
         _write(sys.stderr, f"sentinel: {error.code}: {error.message}\n")

@@ -1,0 +1,17 @@
+{
+  "name": "sentinel",
+  "owner": {
+    "name": "hwain-hwang"
+  },
+  "metadata": {
+    "description": "SENTINEL 품질 검사(CRAP 점수·변이 검사)를 sentinel 명령으로 부르는 플러그인 마켓플레이스",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "sentinel",
+      "source": "./plugins/sentinel",
+      "description": "설치된 SENTINEL 명령으로 검사 범위 확인·설치 진단·첫 실행 설정·품질 검사를 요청합니다."
+    }
+  ]
+}

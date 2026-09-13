@@ -32,4 +32,15 @@ description: 기존의 신뢰된 SENTINEL CLI로 명시된 워크스페이스의
 
 JSON의 실제 `selection`, 모듈별 `status`와 `exitCode`, 전체 `pass`, `certified`, `exitCode`를 기준으로 결과를 요약한다. `planned`나 `ready`, 또는 검사 외 명령의 종료 코드 0은 품질 인증이 아니다. 기본 `check`가 거부되면 그 상태와 종료 코드를 그대로 설명하고 우회하지 않는다.
 
-`--experimental`을 추가하지 않는다. 도구가 없거나 손상되면 설치하지 않고 전제 조건이 충족되지 않았다고 설명한다. 오류가 나도 네이티브 엔진을 직접 실행해 재시도하지 않고, 잠금이나 설정을 바꾸지 않으며, SDK 설치, 컨테이너 생성, 플러그인 등록이나 활성화, 거부를 피하기 위한 네트워크 호출을 하지 않는다. 사용자 요약에는 원본 소스, 비밀 정보, 실제 경로 또는 길이 제한 없는 로그를 출력하지 않는다.
+## 첫 실행 설정
+
+프로젝트에 `sentinel.workspace.json`이 없거나 `doctor`가 `dependencyError`를 보고하면, 검사할 언어(python, typescript, java 중 복수 가능)와 기준값을 사용자에게 확인한 뒤 `setup`을 실행한다. 기준값은 CRAP 상한 `--crap-max`(기본 8)와 변이 검사의 최소 kill 비율 `--mutation-min`(기본 100)이며, 소수점 두 자리까지의 숫자 문자열로 넘긴다. `setup`은 언어 저장소를 사용자 홈의 `.sentinel/sources`에 받고, 잠금 파일에 적힌 공식 주소·지문으로만 언어 SDK를 내려받은 뒤, 도구 묶음을 설치하고 두 설정 파일을 쓴다. 세 언어를 모두 준비하면 약 2GB를 내려받으므로 실행 전에 반드시 사용자 승인을 받는다. 언어는 `--language`를 반복해 지정한다.
+
+```bash
+# $SENTINEL_EXECUTABLE은 사용자가 선택한 신뢰된 실행 파일, setup은 첫 실행 설정 명령, --project와 $SENTINEL_PROJECT는 명시된 프로젝트 루트, --language와 $SENTINEL_LANGUAGE는 준비할 언어 하나(반복 가능), --format json은 JSON 결과 요청이다.
+"$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --language "$SENTINEL_LANGUAGE" --format json
+```
+
+`setup`이 만든 `sentinel.config.json`의 production·testRoots 기본값은 일반적인 폴더 구조를 가정한 것이다. 결과의 `projectConfig`가 `created`이면 사용자에게 실제 소스·테스트 폴더와 맞는지 확인하도록 안내한다. `setup` 외의 방법으로 SDK·패키지·컨테이너를 설치하지 않는다.
+
+`--experimental`을 추가하지 않는다. 도구가 없거나 손상되면 위 `setup` 외의 방법으로 설치하지 않고 전제 조건이 충족되지 않았다고 설명한다. 오류가 나도 네이티브 엔진을 직접 실행해 재시도하지 않고, 잠금이나 설정을 바꾸지 않으며, `setup` 외의 SDK 설치, 컨테이너 생성, 플러그인 등록이나 활성화, 거부를 피하기 위한 네트워크 호출을 하지 않는다. 사용자 요약에는 원본 소스, 비밀 정보, 실제 경로 또는 길이 제한 없는 로그를 출력하지 않는다.

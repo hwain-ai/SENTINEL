@@ -7,6 +7,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .errors import SentinelError
+from .gate import Gate, load_gate
 
 
 MAX_CONFIG_BYTES = 1024 * 1024
@@ -181,7 +182,7 @@ def _load_module(value: Any, project: Path) -> Module:
     return Module(module_id, language, root, version, digest, config)
 
 
-def load_workspace(project_value: str, config_value: str) -> Tuple[Path, List[Module]]:
+def load_workspace(project_value: str, config_value: str) -> Tuple[Path, List[Module], Gate]:
     project = Path(project_value).absolute()
     _reject_path_ancestors(project, "project")
     try:
@@ -195,9 +196,10 @@ def load_workspace(project_value: str, config_value: str) -> Tuple[Path, List[Mo
     payload = read_json(config_path, MAX_CONFIG_BYTES, "workspace config")
     if not isinstance(payload, dict):
         raise SentinelError("invalidType", "workspace config must be an object")
-    require_exact_keys(payload, ("schemaVersion", "modules"), (), "workspace config")
+    require_exact_keys(payload, ("schemaVersion", "modules"), ("gate",), "workspace config")
     if payload["schemaVersion"] != "sentinel-workspace-v1":
         raise SentinelError("invalidSchemaVersion", "workspace schema version is unsupported")
+    gate = load_gate(payload.get("gate"))
     values = payload["modules"]
     if not isinstance(values, list) or isinstance(values, bool) or not 1 <= len(values) <= 128:
         raise SentinelError("invalidModules", "workspace must contain 1 to 128 modules")
@@ -210,7 +212,7 @@ def load_workspace(project_value: str, config_value: str) -> Tuple[Path, List[Mo
         for other, _ in roots[index + 1 :]:
             if _inside(other, root):
                 raise SentinelError("nestedModuleRoots", "module roots must not overlap")
-    return project, modules
+    return project, modules, gate
 
 
 def select_modules(modules: Sequence[Module], languages: Sequence[str], module_ids: Sequence[str]) -> Tuple[str, List[Module]]:
