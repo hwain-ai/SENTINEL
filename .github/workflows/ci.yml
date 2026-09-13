@@ -11,9 +11,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      # The language repositories are private, so verify needs a read token stored as ADMISSION_READ_TOKEN.
-      ADMISSION_VERIFY: ${{ secrets.ADMISSION_READ_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,7 +24,7 @@ jobs:
       - name: Lint the admission list (offline)
         run: python3 scripts/admission.py lint
       - name: Verify the admission list against GitHub
-        if: ${{ env.ADMISSION_VERIFY == 'true' }}
+        # The language repositories are public, so the workflow's own token can read them.
         env:
-          GH_TOKEN: ${{ secrets.ADMISSION_READ_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/admission.py verify
