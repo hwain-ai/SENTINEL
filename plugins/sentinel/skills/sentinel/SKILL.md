@@ -31,7 +31,7 @@ description: 기존의 신뢰된 SENTINEL CLI로 명시된 워크스페이스의
 "$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --format json
 ```
 
-JSON의 실제 `selection`, 모듈별 `status`와 `exitCode`, 전체 `pass`, `certified`, `exitCode`를 기준으로 결과를 요약한다. `planned`나 `ready`, 또는 검사 외 명령의 종료 코드 0은 품질 인증이 아니다. 기본 `check`가 거부되면 그 상태와 종료 코드를 그대로 설명하고 우회하지 않는다.
+JSON의 실제 `selection`, 모듈별 `status`와 `exitCode`, 전체 `pass`, `certified`, `exitCode`를 기준으로 결과를 요약한다. `planned`나 `ready`, 또는 검사 외 명령의 종료 코드 0은 품질 인증이 아니다. 기본 `check`는 승인된(CI 를 통과해 `admission.json`에 기록된) 도구 묶음만 실행하며, 모든 모듈이 승인된 묶음으로 통과하면 `certified`가 true 다. 어떤 모듈이 `backendNotAdmitted`이면 설치된 도구 묶음이 아직 승인 목록에 없다는 뜻이므로, 그 상태와 종료 코드를 그대로 설명하고 우회하지 않는다. `doctor` 결과의 `admitted`로 미리 확인할 수 있다.
 
 ## 첫 실행 설정
 

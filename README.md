@@ -3,7 +3,7 @@
 SENTINEL은 하나의 명령으로 등록된 프로젝트를 검사하고, 필요한 언어 도구만 버전을 고정해 설치하는 로컬 실행기입니다.
 
 - 플러그인이 지원하는 언어: Python, TypeScript, Java 세 가지입니다. 각 언어는 공개 프로젝트에서 원본 도구와 결과를 대조해 확인했습니다. Go 는 실험 연결만 있고 Clojure 는 미연결이라 플러그인 범위에 넣지 않습니다.
-- 아직 진행 중인 범위: CI 로 검증된 도구 묶음만 기본 `check` 가 받아들이는 승인 절차입니다. 그 전까지 기본 `check` 는 거부되고 `--experimental` 로만 실제 판정을 받습니다. 정식 품질 인증은 제공하지 않습니다.
+- 기본 `check` 는 승인된 도구 묶음만 실행합니다. 승인이란 각 언어 검사기 저장소의 CI(자체 시험 전체)를 통과한 commit 의 어댑터를 이 저장소의 `src/sentinel/admission.json` 에 기록한 것이고, 모든 모듈이 승인된 묶음으로 통과하면 결과가 `certified=true` 가 됩니다. 승인되지 않은 묶음은 `--experimental` 로만 실행되며 그 결과는 인증되지 않습니다.
 - 최신 진행 상황: [완료한 것·현재 작업·남은 세 묶음](docs/exec-plans/active/2026-09-sentinel-unified-entry.md#현재-진행-순서)에서 확인합니다. 자세한 시험 기록은 사용법과 분리합니다.
 
 ## 현재 제공하는 것
@@ -13,8 +13,8 @@ SENTINEL은 하나의 명령으로 등록된 프로젝트를 검사하고, 필�
 |plan|설정 파일에서 전체 또는 선택한 모듈 목록을 확인한다.|없음|
 |doctor|선택한 설치 파일의 버전·내용 지문을 확인한다. 언어 SDK 자체의 실행 가능성을 확인하는 명령은 아니다.|없음|
 |install|신뢰하는 로컬 도구 묶음을 언어·버전·지문별 독립 폴더에 복사한다.|없음|
-|check|설치를 먼저 확인한다. 기본 상태에서는 실행을 거부한다.|없음|
-|check --experimental|명시적으로 실험 실행을 요청하면 선택한 도구들을 차례로 호출한다.|있음. 정식 인증은 하지 않음|
+|check|설치와 승인을 먼저 확인한다. 승인된 묶음의 모듈만 실행하고, 승인되지 않은 모듈은 backendNotAdmitted(6)로 두고 시작하지 않는다.|있음. 승인된 묶음만|
+|check --experimental|승인 여부와 상관없이 선택한 도구들을 차례로 호출한다. 정식 인증은 하지 않는다.|있음. 정식 인증은 하지 않음|
 |setup|언어 저장소·SDK·도구 묶음을 준비하고 두 설정 파일과 기준값을 쓴다. 처음 한 번, 또는 언어를 추가할 때 실행한다.|있음. git·언어 bootstrap 스크립트|
 
 모듈은 따로 검사할 프로젝트 폴더입니다. 예를 들어 Python 서버와 TypeScript 화면을 서로 다른 모듈로 등록할 수 있습니다. 전체 실행은 **등록된 모듈 전체**를 뜻하며, 저장소의 모든 언어나 파일을 자동으로 발견했다는 뜻이 아닙니다.
@@ -57,7 +57,7 @@ SENTINEL 은 변이를 잡은 테스트 실패가 단언(assert) 실패일 때�
 
 ```bash
 # --changed = 기준 커밋 이후 바뀐 파일만; --changed-base main = 기준을 main 브랜치로
-.venv/bin/sentinel check --project . --experimental --changed --changed-base main --timeout-seconds 900 --format json
+.venv/bin/sentinel check --project . --changed --changed-base main --timeout-seconds 900 --format json
 ```
 
 기준값은 정수 또는 소수점 두 자리까지의 문자열입니다. crapMax는 0보다 커야 하고 mutationMin은 0 이상 100 이하입니다. `check --crap-max 10`처럼 한 번만 다른 값으로 돌릴 수도 있습니다. 기준값은 검사 요청 JSON의 `gate` 항목으로 각 언어 도구에 전달되며, 통합 실행기는 판정하지 않습니다.
@@ -106,8 +106,10 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 .venv/bin/sentinel plan --project . --language python --format json
 # doctor = 설치 지문 확인. 검사기와 프로젝트 테스트는 실행하지 않음
 .venv/bin/sentinel doctor --project . --format json
-# check = 검사 요청; --experimental = 실험 호출 허용; --timeout-seconds 7200 = 모듈당 실행 제한 7200초(생략하면 언어 도구 3600초, Go 900초, 최대 86400초)
-.venv/bin/sentinel check --project . --experimental --timeout-seconds 7200 --format json
+# check = 검사 요청(승인된 묶음만 실행); --timeout-seconds 7200 = 모듈당 실행 제한 7200초(생략하면 언어 도구 3600초, Go 900초, 최대 86400초)
+.venv/bin/sentinel check --project . --timeout-seconds 7200 --format json
+# --experimental = 승인되지 않은 묶음도 실행(결과는 인증되지 않음)
+.venv/bin/sentinel check --project . --experimental --format json
 ```
 
 위 명령은 프로젝트와 이 패키지의 설치 위치가 같은 폴더라는 예시입니다. 다른 프로젝트에서는 설치한 sentinel 명령의 경로를 사용하고 --project에 검사할 폴더를 지정합니다. --config는 프로젝트 기준 workspace 설정 경로, --tools는 언어 도구를 보관한 폴더이며 생략 시 프로젝트 아래 .sentinel-tools를 사용합니다.
@@ -143,7 +145,23 @@ Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽�
 
 공통 결과의 selection이 allConfigured이면 등록 모듈 전체, partial이면 일부만 대상으로 했습니다. moduleCount는 그 개수입니다. results에는 모듈 식별자, 언어, 관측 상태, 관측 종료 코드만 담고 원본 로그나 경로는 싣지 않습니다.
 
-모든 결과는 certified=false입니다. plan·doctor의 pass는 각각 범위 확인·설치 확인의 성공일 뿐입니다. check는 항상 pass=false이고, 자식 도구가 모두 passed여도 전체 종료 코드는 미승인 실행을 뜻하는 6입니다. 자식의 성공 관측을 정식 품질 통과로 해석하면 안 됩니다.
+plan·doctor의 pass는 각각 범위 확인·설치 확인의 성공일 뿐입니다. doctor 결과의 모듈마다 `admitted`가 붙어 그 묶음이 승인 목록에 있는지 알려 줍니다. 기본 check는 모든 모듈이 승인된 묶음이고 모두 passed일 때만 pass=true, certified=true, 종료 0입니다. 승인되지 않은 모듈이 있으면 그 모듈은 backendNotAdmitted(6)로 남고 시작하지 않으며, 전체는 certified=false입니다. `--experimental` 검사는 언제나 certified=false이고 자식이 모두 passed여도 전체 종료 코드는 미승인 실행을 뜻하는 6입니다.
+
+## 승인 목록(admission.json)
+
+승인 목록은 `src/sentinel/admission.json`이며 패키지와 함께 배포됩니다. 항목 하나는 언어, 어댑터 버전(`sentinel-tool/version`), 어댑터 실행 파일(`sentinel-tool/sentinel-tool`)의 SHA-256, 그 파일을 읽은 저장소와 commit, 그 commit 에서 성공한 CI 실행 주소, 승인 날짜로 이루어집니다. 검사 때는 설치된 묶음의 매니페스트에 적힌 실행 파일 지문을 이 목록과 맞춰 볼 뿐이라 네트워크가 필요 없습니다. 어댑터 실행 파일이 바뀌면 지문이 달라져 다시 승인해야 하고, 검사기 내부만 바뀌면 어댑터의 `version`을 올려 새 항목을 만드는 것이 규칙입니다.
+
+항목은 `scripts/admission.py`로 다룹니다. `add`는 GitHub에서 그 commit 의 `ci` 워크플로가 main 에서 성공했는지 확인하고 버전·지문을 읽어 항목을 씁니다. `verify`는 모든 항목을 GitHub 와 다시 대조하고, `lint`는 네트워크 없이 형식과 중복을 검사합니다. 이 저장소의 CI 는 `lint`를 항상 돌리고, 비공개 언어 저장소를 읽을 수 있는 토큰이 `ADMISSION_READ_TOKEN` 비밀 값으로 있으면 `verify`도 돌립니다.
+
+```bash
+# add = 항목 추가; --language = 언어; --commit = CI 를 통과한 언어 저장소의 commit(main)
+python3 scripts/admission.py add --language python --commit <commit>
+# verify = 모든 항목을 GitHub 와 대조; lint = 형식·중복 검사(오프라인)
+python3 scripts/admission.py verify
+python3 scripts/admission.py lint
+```
+
+`--admission <파일>`을 doctor·check 에 주면 패키지의 목록 대신 그 파일을 씁니다. 조직이 자체 승인 목록을 운영할 때 씁니다.
 
 도구의 실제 실패 상태는 toolError=1, qualityFailed=2, usageConfigError=3, baselineFailed=4, dependencyError=5, backendError=6, evidenceError=7, cancelled=8로 구분합니다. 여러 실패가 섞이면 7,1,5,6,8,4,3,2 순서로 전체 종료 코드를 정합니다. 설치 누락이나 손상이 발견되면 선택한 도구를 하나도 실행하지 않습니다.
 

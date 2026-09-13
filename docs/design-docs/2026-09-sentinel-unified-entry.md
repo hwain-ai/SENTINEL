@@ -55,7 +55,7 @@ RISK(race): 게시에는 Linux renameat2의 no-replace 기능을 사용한다. �
 
 protocol의 status와 exitCode의 고정 대응은 passed=0, toolError=1, qualityFailed=2, usageConfigError=3, baselineFailed=4, dependencyError=5, backendError=6, evidenceError=7, cancelled=8이다. passed status에서만 passed=true다. ready는 doctor가 내는 로컬 설치 확인 상태이며 protocol 응답이 아니다. identity·자료형·상태·process exit·응답 exit가 다르거나 JSON key가 중복되면 backendError다. 오류의 raw stdout·stderr는 출력하지 않는다. 각 module의 실제 관측 종료 코드를 먼저 모으고, 실패가 하나라도 있으면 고정 우선순위 7,1,5,6,8,4,3,2로 보존한다. 실제 실패가 없는 experimental check만 전체 종료 코드를 backendNotAdmitted의 6으로 바꾼다.
 
-RISK(security): bundle은 사용자가 신뢰한 실행 코드다. hash 검사는 인증이나 sandbox가 아니며, 원본 프로젝트 경로를 받는 실행기의 악의적 접근을 막지 못한다. 첫 버전은 명시적인 `--experimental` check만 허용한다. 이 플래그가 없으면 child process를 시작하지 않고 backendNotAdmitted를 반환한다. experimental check도 certified=false, pass=false이며, 실행기별 관측 성공과 제품 인증을 구분한다. 정식 품질 통과가 가능해지려면 native evidence 검증과 운영 격리 admission을 별도 구현해야 한다.
+RISK(security): bundle은 사용자가 신뢰한 실행 코드다. hash 검사는 인증이나 sandbox가 아니며, 원본 프로젝트 경로를 받는 실행기의 악의적 접근을 막지 못한다. 첫 버전은 명시적인 `--experimental` check만 허용했다. 2026-09-13 사용자 승인(A안)으로 운영 격리 admission 대신 CI 기반 승인을 두었다. 승인 목록 `src/sentinel/admission.json`(sentinel-admission-v1)은 언어, 어댑터 버전, 어댑터 실행 파일 SHA-256, 원본 저장소·commit, 그 commit 의 성공한 CI 실행 주소, 승인 날짜를 항목으로 갖는다. 기본 check는 설치된 묶음의 매니페스트에 적힌 실행 파일 지문이 목록에 있을 때만 그 모듈을 실행하고, 없는 모듈은 child process 없이 backendNotAdmitted를 낸다. 모든 모듈이 승인된 묶음으로 passed이면 pass=true, certified=true, 종료 0이다. `--experimental`은 승인과 무관하게 실행하되 certified=false이고 실패가 없어도 종료 6이다. 네이티브 Go 묶음은 승인 대상이 아니다. 승인의 근거는 각 언어 저장소 CI 의 자체 시험 전체 통과이며, 이는 어댑터와 검사기가 그 commit 에서 스스로 약속한 계약을 지켰다는 뜻이지 검사 대상 프로젝트의 품질이나 실행 격리를 뜻하지 않는다. 승인 항목은 `scripts/admission.py add`가 GitHub API 로 CI 성공을 확인해 쓰고, SENTINEL CI 가 `lint`(항상)와 `verify`(읽기 토큰이 있을 때)로 목록을 검증한다.
 
 실행은 우선 순차로 한다. timeout과 전체 출력 byte 제한을 적용하고 process group을 종료·회수한다. 환경은 최소 PATH와 locale만 전달하며 사용자 secret 환경 변수를 상속하지 않는다. process group 탈출 차단, CPU·메모리·network·filesystem 보안 경계는 후속 sandbox 검증 대상이다. help·plan·doctor는 품질 검사를 실행하지 않는다. doctor는 bundle 설치 상태만 확인하며 실행 코드도 호출하지 않는다.
 
@@ -90,6 +90,8 @@ RISK(security): 같은 host의 Docker/커널은 신뢰 기반이다. 이 시험�
 5. 6개월 후: 외부 검사 도구 변경은 해당 bundle과 호환성 시험에 한정한다. 호환성이 깨지면 이전 digest를 선택하고 전체 결과 계약·다른 언어 설치는 유지한다.
 
 ## 변경이력
+
+- 2026-09-13 | CI 기반 승인(admission) 확정 | 변경: 운영 격리 admission 을 CI 통과 commit 의 어댑터 지문 목록으로 대체(A안). 기본 check 의 실행 조건, certified 의 의미, `--experimental` 의 남은 역할, 승인 항목의 근거와 한계를 기록 | 검증: 통합 시험 329개, 실제 Python 프로젝트에서 setup→doctor(admitted)→check 종료 0·certified=true, 빈 승인 목록에서 backendNotAdmitted 확인.
 
 - 2026-09-10 | 실행 책임과 공식 준비 신뢰 확정 | 변경: 사용자 승인에 따라 통합 SENTINEL의 컨테이너 수명 관리와 Maven Central·PyPI 최초 준비 범위를 명시 | 검증: 승인 문면을 실행 계획과 대조. 공급자 서명·실제 프로젝트 통과·운영 허용으로 확대 해석하지 않음.
 - 2026-09-09 | Go 설치·격리 기반의 실패 처리 검증 완료 | 변경: 입력 검사부터 종료 후 검사까지 취소 상태 유지, 기존 회수 실패 보존, 신호 처리기 복원과 경로 오류 비공개 처리 | 검증: 전체216 tests/10.962초, 재설치 source 일치, 독립 후속 ACCEPT, Go 실제 격리10종·복구와 공통 재시험·마지막 컨테이너0. [실제 관측과 한계](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)를 기준으로 전체 backend 비교·admission·plugin은 미완료로 유지.

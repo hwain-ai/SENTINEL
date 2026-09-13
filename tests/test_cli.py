@@ -67,6 +67,14 @@ def make_bundle(parent, language="python", version="1.2.3", behavior="pass"):
             print(json.dumps(response))
             raise SystemExit(response['exitCode'])
         """,
+        "quality_failed": """
+            import json, sys
+            request = json.load(sys.stdin)
+            response = {key: request[key] for key in ('protocolVersion', 'requestId', 'command', 'moduleId', 'language')}
+            response.update(toolVersion='1.2.3', status='qualityFailed', exitCode=2, passed=False)
+            print(json.dumps(response))
+            raise SystemExit(2)
+        """,
         "wrong_nonce": """
             import json, sys
             request = json.load(sys.stdin)

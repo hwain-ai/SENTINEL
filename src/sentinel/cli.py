@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 from . import __version__
+from .admission import DEFAULT_ADMISSION, is_admitted, load_admissions
 from .bundle import Bundle, install_bundle, validate_installed_bundle
 from .changes import changed_files, module_changes
 from .errors import SentinelError
@@ -69,6 +70,8 @@ def _workspace_options(parser: argparse.ArgumentParser, include_timeout: bool = 
     parser.add_argument("--language", action="append", default=[])
     parser.add_argument("--module", action="append", default=[])
     parser.add_argument("--format", choices=("text", "json"), default="text")
+    # The admitted-bundle list ships with the package; a path here replaces it (tests, organisation lists).
+    parser.add_argument("--admission")
     if include_timeout:
         # Omitted: tool bundles get DEFAULT_TOOL_TIMEOUT_SECONDS, native Go its NATIVE_GO_MAX_TIMEOUT_SECONDS.
         parser.add_argument("--timeout-seconds", type=_timeout, default=None)
@@ -109,11 +112,21 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _result(module: Module, status: str, exit_code: int) -> Dict[str, object]:
-    return {"moduleId": module.module_id, "language": module.language, "status": status, "exitCode": exit_code}
+def _result(module: Module, status: str, exit_code: int, admitted: Optional[bool] = None) -> Dict[str, object]:
+    result: Dict[str, object] = {"moduleId": module.module_id, "language": module.language, "status": status, "exitCode": exit_code}
+    if admitted is not None:
+        result["admitted"] = admitted
+    return result
 
 
-def _envelope(command: str, selection: str, results: List[Dict[str, object]], passed: bool, exit_code: int) -> Dict[str, object]:
+def _envelope(
+    command: str,
+    selection: str,
+    results: List[Dict[str, object]],
+    passed: bool,
+    exit_code: int,
+    certified: bool = False,
+) -> Dict[str, object]:
     return {
         "schemaVersion": "sentinel-workspace-result-v1",
         "command": command,
@@ -121,7 +134,7 @@ def _envelope(command: str, selection: str, results: List[Dict[str, object]], pa
         "moduleCount": len(results),
         "results": results,
         "pass": passed,
-        "certified": False,
+        "certified": certified,
         "exitCode": exit_code,
     }
 
@@ -130,9 +143,13 @@ def _emit(payload: Dict[str, object], output_format: str) -> None:
     if output_format == "json":
         _write(sys.stdout, json.dumps(payload, separators=(",", ":"), sort_keys=True) + "\n")
         return
-    lines = [f"SENTINEL {payload['command']}: exit {payload['exitCode']}, certified=false"]
+    certified = "true" if payload["certified"] else "false"
+    lines = [f"SENTINEL {payload['command']}: exit {payload['exitCode']}, certified={certified}"]
     for result in payload["results"]:
-        lines.append(f"{result['moduleId']} [{result['language']}]: {result['status']} (exit {result['exitCode']})")
+        line = f"{result['moduleId']} [{result['language']}]: {result['status']} (exit {result['exitCode']})"
+        if "admitted" in result:
+            line += ", admitted" if result["admitted"] else ", not admitted"
+        lines.append(line)
     _write(sys.stdout, "\n".join(lines) + "\n")
 
 
@@ -161,7 +178,9 @@ def _selected(args: argparse.Namespace) -> tuple:
     return project, selection, selected, tools, gate
 
 
-def _preflight(modules: Sequence[Module], tools: Path) -> tuple:
+def _preflight(modules: Sequence[Module], tools: Path, admissions: Sequence = ()) -> tuple:
+    """Validate every installed bundle; ``admitted`` says whether the default check may run it."""
+
     bundles: Dict[str, Bundle] = {}
     results: List[Dict[str, object]] = []
     failed = False
@@ -169,7 +188,7 @@ def _preflight(modules: Sequence[Module], tools: Path) -> tuple:
         try:
             bundle = validate_installed_bundle(tools, module.language, module.tool_version, module.tool_digest)
             bundles[module.module_id] = bundle
-            results.append(_result(module, "ready", 0))
+            results.append(_result(module, "ready", 0, is_admitted(admissions, bundle)))
         except SentinelError:
             failed = True
             results.append(_result(module, "dependencyError", 5))
@@ -181,7 +200,12 @@ def _aggregate_exit(observations: Sequence[Observation]) -> int:
     for code in FAILURE_PRIORITY:
         if code in codes:
             return code
-    return 6
+    return 0
+
+
+def _admissions(args: argparse.Namespace):
+    path = Path(args.admission).absolute() if getattr(args, "admission", None) else DEFAULT_ADMISSION
+    return load_admissions(path)
 
 
 def _run_workspace(args: argparse.Namespace) -> int:
@@ -190,7 +214,8 @@ def _run_workspace(args: argparse.Namespace) -> int:
         payload = _envelope("plan", selection, [_result(item, "planned", 0) for item in modules], True, 0)
         _emit(payload, args.format)
         return 0
-    bundles, preflight_results, failed = _preflight(modules, tools)
+    admissions = _admissions(args)
+    bundles, preflight_results, failed = _preflight(modules, tools, admissions)
     if args.command == "doctor":
         exit_code = 5 if failed else 0
         payload = _envelope("doctor", selection, preflight_results, not failed, exit_code)
@@ -200,15 +225,22 @@ def _run_workspace(args: argparse.Namespace) -> int:
         payload = _envelope("check", selection, preflight_results, False, 5)
         _emit(payload, args.format)
         return 5
-    if not args.experimental:
-        results = [_result(item, "backendNotAdmitted", 6) for item in modules]
+    # Bundle-backed modules run in the default check only when their adapter is admitted (CI-verified).
+    # Native Go stays experimental-only.
+    admitted = {
+        module.module_id: bool(result.get("admitted")) and not is_native_go(bundles[module.module_id])
+        for module, result in zip(modules, preflight_results)
+    }
+    if not args.experimental and not any(admitted.values()):
+        results = [_result(item, "backendNotAdmitted", 6, False) for item in modules]
         payload = _envelope("check", selection, results, False, 6)
         _emit(payload, args.format)
         return 6
+    # Native Go modules are prepared only when they will run, which is only under --experimental.
     native_modules = [
         module
         for module in modules
-        if is_native_go(bundles[module.module_id])
+        if is_native_go(bundles[module.module_id]) and args.experimental
     ]
     changes: Dict[str, List[str]] = {}
     changed_mode = getattr(args, "changed", False)
@@ -251,7 +283,10 @@ def _run_workspace(args: argparse.Namespace) -> int:
     observations: List[Observation] = []
     try:
         for module in modules:
-            if module.module_id in native_prepared:
+            if not args.experimental and not admitted[module.module_id]:
+                # Not started at all: an unadmitted adapter never runs in the default check.
+                observation = Observation("backendNotAdmitted", 6)
+            elif module.module_id in native_prepared:
                 observation = run_native_go(native_prepared[module.module_id], native_timeout)
             elif changed_mode and not changes[module.module_id]:
                 # Nothing under this module changed, so no tool is started and nothing is judged.
@@ -274,9 +309,17 @@ def _run_workspace(args: argparse.Namespace) -> int:
         observations.append(Observation("cancelled", 8))
         while len(observations) < len(modules):
             observations.append(Observation("cancelled", 8))
-    results = [_result(module, observation.status, observation.exit_code) for module, observation in zip(modules, observations)]
+    results = [
+        _result(module, observation.status, observation.exit_code, admitted[module.module_id])
+        for module, observation in zip(modules, observations)
+    ]
     exit_code = _aggregate_exit(observations)
-    payload = _envelope("check", selection, results, False, exit_code)
+    if args.experimental and exit_code == 0:
+        # An experimental run may include unadmitted adapters, so a clean run is still not admitted.
+        exit_code = 6
+    passed = exit_code == 0
+    certified = passed and all(admitted[module.module_id] for module in modules)
+    payload = _envelope("check", selection, results, passed, exit_code, certified)
     _emit(payload, args.format)
     return exit_code
 
