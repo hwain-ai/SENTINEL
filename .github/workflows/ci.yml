@@ -1,0 +1,23 @@
+# 통합 실행기 자체 시험. 표준 라이브러리만 쓰므로 Python 하나면 된다.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run the unified runner's tests
+        run: PYTHONPATH=src python3 -B -m unittest discover -s tests -v
+      - name: Validate the plugin manifests
+        run: |
+          python3 -c "import json; json.load(open('.claude-plugin/marketplace.json')); json.load(open('.agents/plugins/marketplace.json')); json.load(open('plugins/sentinel/.claude-plugin/plugin.json')); json.load(open('plugins/sentinel/.codex-plugin/plugin.json'))"
