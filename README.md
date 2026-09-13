@@ -4,7 +4,7 @@ SENTINEL은 하나의 명령으로 등록된 프로젝트를 검사하고, 필�
 
 - 현재 확인한 범위: 공통 명령과 공개 Go 프로젝트 한 개의 실험 연결입니다.
 - 아직 진행 중인 범위: 나머지 언어의 실제 프로젝트 검증·연결과 Codex·Claude Code 플러그인 설치 확인입니다. 정식 품질 인증은 제공하지 않습니다.
-- 최신 진행 상황: [완료한 것·현재 작업·남은 세 묶음](../docs/exec-plans/active/2026-09-sentinel-unified-entry.md#현재-진행-순서)에서 확인합니다. 자세한 시험 기록은 사용법과 분리합니다.
+- 최신 진행 상황: [완료한 것·현재 작업·남은 세 묶음](docs/exec-plans/active/2026-09-sentinel-unified-entry.md#현재-진행-순서)에서 확인합니다. 자세한 시험 기록은 사용법과 분리합니다.
 
 ## 현재 제공하는 것
 
@@ -48,7 +48,7 @@ SENTINEL 은 변이를 잡은 테스트 실패가 단언(assert) 실패일 때�
 |프로젝트|SENTINEL killed + runtimeError|원본 도구 killed|
 |---|---|---|
 |ItsDangerous 2.2.0 (Python, 변이 567)|72 + 346 = 418|mutmut 418|
-|unjs/scule v1.3.0 (TypeScript, 변이 81)|72 + 1 = 73|Stryker 75 (차이 2개는 SENTINEL 이 아직 못 잡는 모듈 최상위 상수 변이)|
+|unjs/scule v1.3.0 (TypeScript, 변이 81)|74 + 1 = 75|Stryker 75|
 |Commons CLI 1.10.0 (Java, 변경 파일 1개, 변이 10)|5 + 5 = 10|mutate4java 10|
 
 ## 변경분만 검사
@@ -127,7 +127,7 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 
 entrypoint도 files에 포함하며 manifest 자체는 제외합니다. 미기재 파일, 파일 내용 불일치, 링크·특수 파일과 구성요소가 256개를 넘는 과도하게 깊은 상대 경로는 거부합니다. 최대 파일 4,096개, 파일당 16 MiB, 전체 64 MiB인 작은 실행 연결용 묶음입니다. Java SDK처럼 큰 언어 실행 환경 전체를 여기에 넣는 설계가 아닙니다.
 
-Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽고 기존 Go 격리 실행기를 직접 호출하므로 별도 실행 파일이나 관리 서버를 추가하지 않습니다. 검증된 SDK·도구·의존성은 Git 밖의 --tools 폴더에 미리 준비해야 합니다. 사용자가 지정한 프로젝트 복사본에 .git 또는 .sentinel이 있으면 거부합니다. [Go 연결 설정과 제한](../docs/references/sentinel-execution-api.md#go-통합-명령의-실험-연결)을 참고하세요.
+Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽고 기존 Go 격리 실행기를 직접 호출하므로 별도 실행 파일이나 관리 서버를 추가하지 않습니다. 검증된 SDK·도구·의존성은 Git 밖의 --tools 폴더에 미리 준비해야 합니다. 사용자가 지정한 프로젝트 복사본에 .git 또는 .sentinel이 있으면 거부합니다. [Go 연결 설정과 제한](docs/references/sentinel-execution-api.md#go-통합-명령의-실험-연결)을 참고하세요.
 
 현재 공개 Go 프로젝트 한 개에서 설치된 명령의 결과 반환·제한 실행·사용자 취소와 원본 보존·컨테이너 정리를 확인했습니다. 품질 결과는 통과가 아닌 qualityFailed/2였습니다. 이는 해당 실험 연결의 검증이며 모든 Go 프로젝트 지원이나 정식 품질 인증은 아닙니다.
 
@@ -153,7 +153,7 @@ Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽�
 
 ## 개발자 참고
 
-실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](../docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [Go 검증 기록](../docs/references/sentinel-go-native-validation.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 이 저장소 자체가 마켓플레이스입니다. Claude Code는 `claude plugin marketplace add hwain-hwang/SENTINEL` 뒤 `claude plugin install sentinel@sentinel`, Codex는 `codex plugin marketplace add hwain-hwang/SENTINEL` 뒤 `codex plugin add sentinel`로 설치합니다. 플러그인은 지침만 담으므로 sentinel 명령과 setup은 따로 실행해야 합니다.
+실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [Go 검증 기록](https://github.com/hwain-hwang/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 이 저장소 자체가 마켓플레이스입니다. Claude Code는 `claude plugin marketplace add hwain-hwang/SENTINEL` 뒤 `claude plugin install sentinel@sentinel`, Codex는 `codex plugin marketplace add hwain-hwang/SENTINEL` 뒤 `codex plugin add sentinel`로 설치합니다. 플러그인은 지침만 담으므로 sentinel 명령과 setup은 따로 실행해야 합니다.
 
 ## 남은 단계
 
