@@ -36,8 +36,8 @@ class ReferenceCollectorTests(unittest.TestCase):
 
     def test_legacy_bootstrap_golden_before_refactor(self):
         raw = go_sandbox._BOOTSTRAP.encode()
-        self.assertEqual(len(raw), 4592)
-        self.assertEqual(hashlib.sha256(raw).hexdigest(), '05415382d1c65d4b607720bb3d2ca527071b5e6baffdf5829042a2f33deecc01')
+        self.assertEqual(len(raw), 4582)
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), '77f4a8cc14ddcbe093ea8cf899a6c8d5298a5e4f709cb5843724de544d0b828e')
 
     def test_default_collector_keeps_existing_extra_read_policy(self):
         self.assertEqual(protocol.MAX_OUTPUT_BYTES, 1048576)

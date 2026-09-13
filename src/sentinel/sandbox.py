@@ -19,7 +19,7 @@ from .protocol import MAX_OUTPUT_BYTES, _collect, _collect_reference
 
 
 DOCKER_ENV = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"}
-OWNERSHIP_LABEL = "io.cognet9.sentinel.ownership"
+OWNERSHIP_LABEL = "io.github.hwain-ai.sentinel.ownership"
 INSPECT_TIMEOUT = 10.0
 CLEANUP_TIMEOUT = 10.0
 PULL_TIMEOUT = 120.0

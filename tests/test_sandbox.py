@@ -139,7 +139,7 @@ class DockerScript:
                 "Env": ["PATH=/usr/bin:/bin", "LANG=C.UTF-8", "LC_ALL=C.UTF-8"],
                 "Cmd": ["-i", "--", "PATH=/usr/bin:/bin", "LANG=C.UTF-8", "LC_ALL=C.UTF-8", *self.target_argv],
                 "Entrypoint": ["/usr/bin/env"],
-                "Labels": {"io.cognet9.sentinel.ownership": self.nonce},
+                "Labels": {"io.github.hwain-ai.sentinel.ownership": self.nonce},
                 "WorkingDir": "/tmp",
                 "Healthcheck": {"Test": ["NONE"]},
                 "Volumes": None,
@@ -190,7 +190,7 @@ class DockerScript:
         value = json.loads(self.container_inspect("created"))
         value["Id"] = candidate
         value["Name"] = "/not-owned-by-sentinel"
-        value["Config"]["Labels"]["io.cognet9.sentinel.ownership"] = "wrong-nonce"
+        value["Config"]["Labels"]["io.github.hwain-ai.sentinel.ownership"] = "wrong-nonce"
         return json.dumps(value, separators=(",", ":")).encode()
 
     def assert_create_contract(self, command):

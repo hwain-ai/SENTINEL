@@ -78,7 +78,7 @@ covers: 통합-01..통합-06
 
 충족 요구사항: 통합-01..05의 로컬 transport·설치 부분. 정식 native 검사와 운영 sandbox는 Task 2다.
 
-작업 디렉터리: `/home/ec2-user/work/Cognet9-Official/SENTINEL`. Python 3.9 이상 표준 라이브러리만 사용하는 src-layout package를 만든다. console entry point는 `sentinel`, import package도 `sentinel`이다. pyproject는 setuptools build backend로 외부 언어 SDK 의존성 없이 설치한다. 빈 초기 저장소라 baseline test는 없으며 첫 test부터 RED/GREEN을 기록한다. README를 제외한 docs와 다른 저장소는 수정하지 않는다. 무커밋 작업이므로 task report에는 commit 없음과 변경 파일 목록을 기록한다.
+작업 디렉터리: `<workspace>/SENTINEL`. Python 3.9 이상 표준 라이브러리만 사용하는 src-layout package를 만든다. console entry point는 `sentinel`, import package도 `sentinel`이다. pyproject는 setuptools build backend로 외부 언어 SDK 의존성 없이 설치한다. 빈 초기 저장소라 baseline test는 없으며 첫 test부터 RED/GREEN을 기록한다. README를 제외한 docs와 다른 저장소는 수정하지 않는다. 무커밋 작업이므로 task report에는 commit 없음과 변경 파일 목록을 기록한다.
 
 CLI 계약:
 

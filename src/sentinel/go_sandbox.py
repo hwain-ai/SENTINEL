@@ -115,7 +115,7 @@ _BOOTSTRAP_SETUP = r'''test "$(id -u)" = "$expected_uid"
 test "$(id -g)" = "$expected_gid"
 test ! -e /run/docker.sock
 test ! -e /var/run/docker.sock
-test ! -e /home/ec2-user/work/Cognet9-Official
+test -z "$(ls -A /home 2>/dev/null)"
 test "$(ls /sys/class/net)" = lo
 grep -Eq '^CapEff:[[:space:]]+0+$' /proc/self/status
 grep -Eq '^NoNewPrivs:[[:space:]]+1$' /proc/self/status
