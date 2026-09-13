@@ -26,6 +26,8 @@ TOOL_SETUP = "setup.sh"
 TOOL_VERSION = "version"
 TOOL_HOME = "home"
 PROJECT_CONFIG = "sentinel.config.json"
+# Where a Python project's own test requirements are installed by the checker's launcher.
+PYTHON_DEPENDENCY_DIRECTORY = ".sentinel-deps"
 # Languages whose checker reads a per-project config next to the workspace file.
 CONFIGURED_LANGUAGES = ("python", "typescript")
 DEFAULT_PROJECT_MODULES = {
@@ -127,7 +129,21 @@ def _stage_bundle(language: str, repository: Path, tool_directory: Path, tools: 
     return staging, hashlib.sha256(manifest_bytes).hexdigest()
 
 
-def _setup_language(language: str, sources: Path, tools: Path) -> Dict[str, object]:
+def _install_python_requirements(repository: Path, project: Path, requirements: str) -> bool:
+    """Install the project's requirements (wheels only) into <project>/.sentinel-deps; offline first."""
+
+    requirement_path = project / requirements
+    if not requirement_path.is_file():
+        return False
+    target = project / PYTHON_DEPENDENCY_DIRECTORY
+    launcher = repository / "scripts" / "uv.sh"
+    if _forward([str(launcher), "deps", str(target), str(requirement_path), "--offline"], repository):
+        return True
+    sys.stderr.write("sentinel: requirements are not cached, installing from the index online\n")
+    return _forward([str(launcher), "deps", str(target), str(requirement_path)], repository)
+
+
+def _setup_language(language: str, sources: Path, tools: Path, project: Path, python_requirements: Optional[str]) -> Dict[str, object]:
     result: Dict[str, object] = {"language": language}
     repository = sources / SETUP_LANGUAGES[language]
     if not repository.is_dir() and not _clone(language, repository):
@@ -144,6 +160,11 @@ def _setup_language(language: str, sources: Path, tools: Path) -> Dict[str, obje
     if not _forward([str(tool_directory / TOOL_SETUP)], repository):
         result["status"] = "bootstrapFailed"
         return result
+    if language == "python" and python_requirements is not None:
+        if not _install_python_requirements(repository, project, python_requirements):
+            result["status"] = "requirementsFailed"
+            return result
+        result["pythonRequirements"] = python_requirements
     staging, digest = _stage_bundle(language, repository, tool_directory, tools, version)
     try:
         install_bundle(staging, digest, tools)
@@ -213,7 +234,10 @@ def run_setup(args) -> Tuple[Dict[str, object], int]:
     tools = Path(args.tools).absolute() if args.tools else project / ".sentinel-tools"
     sources = Path(args.sources).absolute() if args.sources else default_sources()
     languages = _unique(args.language)
-    results = [_setup_language(language, sources, tools) for language in languages]
+    requirements = getattr(args, "python_requirements", None)
+    if requirements is not None and "python" not in languages:
+        raise SentinelError("usageError", "--python-requirements needs --language python", 3)
+    results = [_setup_language(language, sources, tools, project, requirements) for language in languages]
     installed = {item["language"]: item for item in results if item["status"] == "installed"}
     passed = len(installed) == len(languages)
     project_config = None

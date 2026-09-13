@@ -42,6 +42,6 @@ JSON의 실제 `selection`, 모듈별 `status`와 `exitCode`, 전체 `pass`, `ce
 "$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --language "$SENTINEL_LANGUAGE" --format json
 ```
 
-`setup`이 만든 `sentinel.config.json`의 production·testRoots 기본값은 일반적인 폴더 구조를 가정한 것이다. 결과의 `projectConfig`가 `created`이면 사용자에게 실제 소스·테스트 폴더와 맞는지 확인하도록 안내한다. `setup` 외의 방법으로 SDK·패키지·컨테이너를 설치하지 않는다.
+Python 프로젝트의 테스트가 외부 패키지를 쓰면 사용자에게 요구사항 파일 경로를 확인한 뒤 `--python-requirements <프로젝트 기준 상대 경로>`를 `setup`에 붙인다. `setup`이 만든 `sentinel.config.json`의 production·testRoots 기본값은 일반적인 폴더 구조를 가정한 것이다. 결과의 `projectConfig`가 `created`이면 사용자에게 실제 소스·테스트 폴더와 맞는지 확인하도록 안내한다. `setup` 외의 방법으로 SDK·패키지·컨테이너를 설치하지 않는다.
 
 `--experimental`을 추가하지 않는다. 도구가 없거나 손상되면 위 `setup` 외의 방법으로 설치하지 않고 전제 조건이 충족되지 않았다고 설명한다. 오류가 나도 네이티브 엔진을 직접 실행해 재시도하지 않고, 잠금이나 설정을 바꾸지 않으며, `setup` 외의 SDK 설치, 컨테이너 생성, 플러그인 등록이나 활성화, 거부를 피하기 위한 네트워크 호출을 하지 않는다. 사용자 요약에는 원본 소스, 비밀 정보, 실제 경로 또는 길이 제한 없는 로그를 출력하지 않는다.

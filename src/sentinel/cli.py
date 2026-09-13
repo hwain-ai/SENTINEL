@@ -91,6 +91,7 @@ def build_parser() -> argparse.ArgumentParser:
     setup.add_argument("--sources")
     setup.add_argument("--language", action="append", default=[], choices=sorted(SETUP_LANGUAGES), required=True)
     setup.add_argument("--format", choices=("text", "json"), default="text")
+    setup.add_argument("--python-requirements")
     _gate_options(setup)
     install = commands.add_parser("install")
     install.add_argument("--bundle", required=True)

@@ -38,6 +38,7 @@ setup은 다음을 순서대로 합니다.
 3. 저장소의 `sentinel-tool/sentinel-tool` 실행 파일과 저장소 위치를 적은 `home` 파일로 도구 묶음을 만들어 `--tools`(기본 프로젝트의 .sentinel-tools)에 설치합니다.
 4. `sentinel.workspace.json`에 언어별 모듈과 `gate`(crapMax, mutationMin)를 씁니다. 같은 언어의 기존 모듈은 바꾸고 다른 언어 모듈은 유지합니다.
 5. python·typescript 검사기가 읽는 `sentinel.config.json`이 없으면 기본값(소스 `src/`, 테스트 `tests/` 또는 `test/`)으로 만듭니다. 이미 있으면 건드리지 않습니다. 결과의 projectConfig가 created이면 실제 폴더 구조에 맞게 고칩니다.
+6. Python 프로젝트의 테스트가 외부 패키지를 쓰면 `--python-requirements requirements.txt`(프로젝트 기준 상대 경로)를 함께 줍니다. 검사기의 고정 Python으로 그 목록을 wheel 만으로 `<프로젝트>/.sentinel-deps`에 설치하고, 검사 때 PYTHONPATH에 올립니다. 이 폴더는 분석·변이 대상이 아니므로 `.gitignore`에 넣습니다. 캐시에 없으면 공식 인덱스에서 내려받으며, 목록에 지문이 없으면 지문 검증도 없습니다.
 
 ## 변경분만 검사
 

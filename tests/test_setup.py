@@ -44,6 +44,18 @@ def fake_language_source(sources, repository, version="0.3.1", setup_exit=0):
     )
     setup.chmod(0o700)
     (tool / "version").write_text(version + "\n", encoding="utf-8")
+    scripts = root / "scripts"
+    scripts.mkdir()
+    launcher = scripts / "uv.sh"
+    launcher.write_text(
+        "#!/usr/bin/bash\n"
+        "printf '%s\\n' \"$*\" >> \"$(dirname \"$0\")/../deps.log\"\n"
+        "[ \"$1\" = deps ] || exit 2\n"
+        "[ \"$4\" = --offline ] && exit 1\n"
+        "mkdir -p \"$2\" && printf 'installed\\n' > \"$2/marker\"\n",
+        encoding="utf-8",
+    )
+    launcher.chmod(0o700)
     return root
 
 
@@ -134,6 +146,26 @@ class SetupCommandTests(unittest.TestCase):
         self.assertEqual(sorted(item["language"] for item in after["modules"]), ["python", "typescript"])
         self.assertEqual(json.loads(before)["gate"], after["gate"])
         self.assertEqual((self.project / "sentinel.config.json").read_text(), '{"specVersion":"1.0.0","modules":[]}\n')
+
+    def test_python_requirements_are_installed_into_the_project_dependency_directory(self):
+        python_root = fake_language_source(self.sources, "SENTINEL_PY")
+        (self.project / "requirements.txt").write_text("freezegun==1.4.0\n", encoding="utf-8")
+        completed = self.setup("--language", "python", "--python-requirements", "requirements.txt")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["results"][0]["pythonRequirements"], "requirements.txt")
+        self.assertEqual((self.project / ".sentinel-deps" / "marker").read_text(), "installed\n")
+        calls = (python_root / "deps.log").read_text().splitlines()
+        target = str(self.project / ".sentinel-deps")
+        requirements = str(self.project / "requirements.txt")
+        self.assertEqual(calls, [f"deps {target} {requirements} --offline", f"deps {target} {requirements}"])
+        self.assertIn("installing from the index online", completed.stderr)
+
+        missing = self.setup("--language", "python", "--python-requirements", "absent.txt")
+        self.assertEqual(missing.returncode, 5, missing.stdout)
+        self.assertEqual(json.loads(missing.stdout)["results"][0]["status"], "requirementsFailed")
+        wrong = self.setup("--language", "typescript", "--python-requirements", "requirements.txt")
+        self.assertEqual(wrong.returncode, 3, wrong.stdout)
 
     def test_bootstrap_failure_or_missing_source_is_a_dependency_error_without_configs(self):
         fake_language_source(self.sources, "SENTINEL_PY", setup_exit=1)
