@@ -17,6 +17,20 @@
     {
       "admittedAt": "2026-09-13",
       "ci": {
+        "runUrl": "https://github.com/hwain-ai/SENTINEL_JAVA/actions/runs/34767860602",
+        "workflow": "ci"
+      },
+      "entrypointSha256": "2f061777ba29e2724d8671219f78548f6a6813a62739dbb4824db15ab44f9825",
+      "language": "java",
+      "source": {
+        "commit": "e69ea7ec380ac72d42f85ceb047e41ea08a6e8fe",
+        "repository": "hwain-ai/SENTINEL_JAVA"
+      },
+      "toolVersion": "0.1.2"
+    },
+    {
+      "admittedAt": "2026-09-13",
+      "ci": {
         "runUrl": "https://github.com/hwain-ai/SENTINEL_PY/actions/runs/34750826658",
         "workflow": "ci"
       },
@@ -31,6 +45,20 @@
     {
       "admittedAt": "2026-09-13",
       "ci": {
+        "runUrl": "https://github.com/hwain-ai/SENTINEL_PY/actions/runs/34767882730",
+        "workflow": "ci"
+      },
+      "entrypointSha256": "31c54b39491b5aa817cacae8a5e5644f33d21b76c678add82fc85a11c52a829d",
+      "language": "python",
+      "source": {
+        "commit": "b45b35221e0959255841c0bed7596a5d25f14785",
+        "repository": "hwain-ai/SENTINEL_PY"
+      },
+      "toolVersion": "0.1.1"
+    },
+    {
+      "admittedAt": "2026-09-13",
+      "ci": {
         "runUrl": "https://github.com/hwain-ai/SENTINEL_TS/actions/runs/34750797137",
         "workflow": "ci"
       },
@@ -41,6 +69,20 @@
         "repository": "hwain-ai/SENTINEL_TS"
       },
       "toolVersion": "0.1.0"
+    },
+    {
+      "admittedAt": "2026-09-13",
+      "ci": {
+        "runUrl": "https://github.com/hwain-ai/SENTINEL_TS/actions/runs/34764025018",
+        "workflow": "ci"
+      },
+      "entrypointSha256": "c3fc7120dd380373ef96550ef344bbf190ed11aab3c6595a79d63f3a670df9b3",
+      "language": "typescript",
+      "source": {
+        "commit": "ee176fdd86efdb403dec9be8a4d918c4e2f91ee5",
+        "repository": "hwain-ai/SENTINEL_TS"
+      },
+      "toolVersion": "0.1.1"
     }
   ],
   "schemaVersion": "sentinel-admission-v1"
