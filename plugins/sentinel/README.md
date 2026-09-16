@@ -14,9 +14,24 @@
 
 사용자가 선택한, 이미 설치되어 신뢰할 수 있는 SENTINEL 0.1.0 실행 파일과 검사할 프로젝트 경로가 필요하다. 이 폴더는 Python 설치 묶음과 별개다. 폴더 전체를 복사해도 플러그인 파일만 전달되며 SENTINEL 명령과 언어 도구는 함께 설치되지 않는다.
 
-플러그인 자체를 만드는 데 컨테이너는 필요하지 않다. 검사 실행의 격리와 시작·종료·정리는 공통 SENTINEL 실행기가 담당한다. 플러그인은 기본 `check`의 거부를 우회하거나 언어별 검사 엔진을 직접 실행하지 않는다.
+플러그인 자체를 만드는 데 컨테이너는 필요하지 않다. 검사 시작·종료·프로세스 정리는 공통 SENTINEL 실행기가 담당한다. 기본 세 언어 검사를 보안 컨테이너 안에서 실행한다고 보장하지 않는다. 플러그인은 기본 `check`의 거부를 우회하거나 언어별 검사 엔진을 직접 실행하지 않는다.
 
-언어 SDK와 도구 묶음이 없을 때 스킬이 실행할 수 있는 설치 경로는 `sentinel setup` 하나뿐이며, 실행 전에 언어와 기준값(CRAP 상한, 변이 최소 kill 비율)을 사용자에게 확인한다. setup의 동작은 [저장소 README](../../README.md#첫-실행-설정)에 있다.
+언어 SDK와 도구 묶음이 없을 때 스킬이 실행할 수 있는 설치 경로는 `sentinel setup` 하나뿐이다. 언어·기준값·설치 범위가 정해지지 않았으면 먼저 확인하고, 같은 세션에서 이미 승인받았다면 그대로 진행한다. 여러 언어를 처음 설정할 때는 `--module-root`로 실제 폴더를 각각 명시한다. setup의 동작은 [저장소 README](../../README.md#첫-실행-설정)에 있다.
+
+Windows에서는 호스트 플러그인을 Windows에 설치해도 CLI와 언어 도구는 WSL 내부에 준비한다. 신뢰한 Linux 실행 파일·프로젝트·도구 폴더와 배포판 이름을 스킬에 알려 준다. 스킬은 `wsl.exe --exec`의 인자로 명령을 전달하며 Windows Python으로 Linux CLI를 실행하지 않는다.
+
+## 실제 설치와 확인
+
+검증한 로컬 저장소를 마켓플레이스로 추가한 뒤 플러그인을 설치한다. 아래 `<SENTINEL 저장소 경로>`는 이 저장소 루트이며 `plugins/sentinel` 자체가 아니다.
+
+```text
+codex plugin marketplace add <SENTINEL 저장소 경로>
+codex plugin add sentinel@sentinel
+claude plugin marketplace add <SENTINEL 저장소 경로> --scope user
+claude plugin install sentinel@sentinel --scope user
+```
+
+설치 후 새 세션에서 sentinel 스킬을 사용한다. `doctor`의 ready는 설치 확인, `check`의 passed는 실제 검사 통과, `noChanges`는 미검사다. 미검사는 종료 0이어도 인증하지 않는다. [실제 호스트·WSL 검증 기록](../../docs/references/sentinel-host-validation.md)에 설치 발견과 실제 실행 결과를 나눠 기록한다.
 
 ## 소스 검증
 

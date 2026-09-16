@@ -31,11 +31,26 @@ description: 기존의 신뢰된 SENTINEL CLI로 명시된 워크스페이스의
 "$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --format json
 ```
 
-JSON의 실제 `selection`, 모듈별 `status`와 `exitCode`, 전체 `pass`, `certified`, `exitCode`를 기준으로 결과를 요약한다. `planned`나 `ready`, 또는 검사 외 명령의 종료 코드 0은 품질 인증이 아니다. 기본 `check`는 승인된(CI 를 통과해 `admission.json`에 기록된) 도구 묶음만 실행하며, 모든 모듈이 승인된 묶음으로 통과하면 `certified`가 true 다. 어떤 모듈이 `backendNotAdmitted`이면 설치된 도구 묶음이 아직 승인 목록에 없다는 뜻이므로, 그 상태와 종료 코드를 그대로 설명하고 우회하지 않는다. `doctor` 결과의 `admitted`로 미리 확인할 수 있다.
+JSON의 실제 `selection`, 모듈별 `status`와 `exitCode`, 전체 `pass`, `certified`, `exitCode`를 기준으로 결과를 요약한다. `planned`나 `ready`, 또는 검사 외 명령의 종료 코드 0은 품질 인증이 아니다. `noChanges`는 실행할 변경이 없어 정상 종료한 미검사 상태이며 품질 통과로 설명하지 않는다. 기본 `check`는 승인된(CI 를 통과해 `admission.json`에 기록된) 도구 묶음만 실행하며, 선택된 모든 모듈에서 실제 `passed` 판정을 받아야 `certified`가 true다. 일부 모듈 또는 변경 파일만 선택한 결과는 그 범위의 결과로 설명한다. 어떤 모듈이 `backendNotAdmitted`이면 설치된 도구 묶음이 아직 승인 목록에 없다는 뜻이므로, 그 상태와 종료 코드를 그대로 설명하고 우회하지 않는다. `doctor` 결과의 `admitted`로 미리 확인할 수 있다.
+
+## Windows에서 WSL로 호출
+
+Windows 호스트에서는 SENTINEL을 네이티브 Python으로 실행하지 않는다. 사용자가 지정했거나 이번 설치 작업에서 확인한 WSL 배포판 이름, WSL 안의 SENTINEL 실행 파일 절대 경로, WSL 안의 프로젝트 절대 경로를 사용한다. Windows 경로를 Linux 경로로 추측해서 바꾸지 않는다. 필요한 경우 지정된 배포판의 `wslpath`로 변환하고 실제 대상 폴더를 확인한다. 새 설치는 WSL 내부 파일 시스템에서 진행하며 Git의 LF 줄바꿈을 보존한다.
+
+PowerShell에서는 다음과 같이 실행한다. `SENTINEL_DISTRIBUTION`은 확인한 배포판 이름이다. 명령과 각 옵션은 개별 인자로 전달하고, 명령 전체를 하나의 문자열이나 `bash -c`로 조립하지 않는다. `plan` 대신 요청 의도에 맞는 `doctor`, `check`, `setup`을 같은 방식으로 호출한다.
+
+```powershell
+# wsl.exe는 지정한 Linux 환경에서 명령을 실행하고, --exec 뒤에는 확인한 실행 파일과 개별 인자를 전달한다.
+& wsl.exe -d $SENTINEL_DISTRIBUTION --exec $SENTINEL_EXECUTABLE plan --project $SENTINEL_PROJECT --format json
+```
+
+이미 WSL 안에서 실행 중이면 앞의 Linux 명령 예시를 그대로 사용한다. WSL 접근이나 실행이 거부되면 실제 오류를 알리고 호스트의 정상 승인 절차를 따른다. 실패를 성공으로 바꾸거나 다른 검사 엔진으로 대신 실행하지 않는다.
 
 ## 첫 실행 설정
 
-이 플러그인이 지원하는 언어는 Python, TypeScript, Java 세 가지다. 프로젝트에 `sentinel.workspace.json`이 없거나 `doctor`가 `dependencyError`를 보고하면, 검사할 언어(python, typescript, java 중 복수 가능, 생략하면 세 언어 전부)와 기준값을 사용자에게 확인한 뒤 `setup`을 실행한다. 다른 언어의 검사는 요청받아도 실행하지 않고 지원 범위 밖이라고 설명한다. 기준값은 CRAP 상한 `--crap-max`(기본 8)와 변이 검사의 최소 kill 비율 `--mutation-min`(기본 100)이며, 소수점 두 자리까지의 숫자 문자열로 넘긴다. `setup`은 언어 저장소를 사용자 홈의 `.sentinel/sources`에 받고, 잠금 파일에 적힌 공식 주소·지문으로만 언어 SDK를 내려받은 뒤, 도구 묶음을 설치하고 두 설정 파일을 쓴다. 세 언어를 모두 준비하면 약 2GB를 내려받으므로 실행 전에 반드시 사용자 승인을 받는다. 언어는 `--language`를 반복해 지정하며, 프로젝트에 쓰인 언어만 고르는 것이 보통이다.
+이 플러그인이 지원하는 언어는 Python, TypeScript, Java 세 가지다. 프로젝트에 `sentinel.workspace.json`이 없거나 `doctor`가 `dependencyError`를 보고하면, 검사할 언어와 기준값, 모듈 폴더를 확인해 `setup`을 실행한다. 같은 대화에서 사용자가 이미 설치와 해당 범위를 승인했다면 다시 승인을 요청하지 않는다. 다른 언어의 검사는 요청받아도 실행하지 않고 지원 범위 밖이라고 설명한다. 기준값은 CRAP 상한 `--crap-max`(기본 8)와 변이 검사의 최소 kill 비율 `--mutation-min`(기본 100)이며, 소수점 두 자리까지의 숫자 문자열로 넘긴다. `setup`은 언어 저장소를 사용자 홈의 `.sentinel/sources`에 받고, 잠금 파일에 적힌 공식 주소·지문으로만 언어 SDK를 내려받은 뒤, 도구 묶음을 설치하고 설정 파일을 쓴다. 세 언어를 모두 준비하면 약 2GB를 내려받으므로 설치 요청이 아직 승인되지 않았다면 먼저 설명하고 승인받는다. 언어는 `--language`를 반복해 명시한다.
+
+새로 여러 언어를 함께 준비할 때는 `--module-root python=api --module-root typescript=web`처럼 사용자가 확인한 프로젝트 기준 상대 폴더를 언어마다 지정한다. 예시 폴더 이름을 실제 프로젝트에 임의로 적용하지 않는다. 모듈 폴더는 서로 같거나 포함 관계일 수 없다. 기존 모듈의 폴더와 설정은 유지하며, 단일 언어의 새 프로젝트는 기본적으로 프로젝트 루트 `.`을 사용한다. 언어를 생략하면 세 언어가 선택되므로 폴더가 불명확한 상태에서 생략하지 않는다.
 
 ```bash
 # $SENTINEL_EXECUTABLE은 사용자가 선택한 신뢰된 실행 파일, setup은 첫 실행 설정 명령, --project와 $SENTINEL_PROJECT는 명시된 프로젝트 루트, --language와 $SENTINEL_LANGUAGE는 준비할 언어 하나(반복 가능), --format json은 JSON 결과 요청이다.

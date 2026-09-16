@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "SENTINEL",
     "shortDescription": "기존 SENTINEL 명령으로 프로젝트 검사 요청",
-    "longDescription": "언어 도구를 설치하거나 실행 거부를 우회하지 않고, 사용자가 선택한 SENTINEL 명령으로 Python·TypeScript·Java 프로젝트의 범위 확인·설치 진단·첫 실행 설정·기본 검사를 요청합니다.",
+    "longDescription": "사용자가 선택한 SENTINEL 명령으로 Python·TypeScript·Java 프로젝트의 범위 확인·설치 진단·승인된 첫 실행 설정·기본 검사를 요청합니다. Windows에서는 WSL의 실행 파일을 호출하며 검사 결과와 미검사를 구분합니다.",
     "developerName": "hwain-ai",
     "category": "Developer Tools",
     "capabilities": [

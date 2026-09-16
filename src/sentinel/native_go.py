@@ -422,7 +422,7 @@ def recheck_native_go(prepared: NativeGoPrepared) -> None:
 
 
 def observation_from_go(observation: GoRunObservation) -> Observation:
-    reverse_status = {exit_code: status for status, exit_code in STATUS_CODES.items()}
+    reverse_status = {exit_code: status for status, exit_code in STATUS_CODES.items() if status != "noChanges"}
     try:
         result = observation.sandbox
         exit_code = observation.command_exit_code

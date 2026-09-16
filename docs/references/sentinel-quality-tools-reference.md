@@ -22,13 +22,6 @@ owner: Codex
 - [Vitest](https://vitest.dev/guide/reporters): nonce가 있는 typed test event adapter의 runner 경계로 사용한다. (요구사항-04, 요구사항-22, 요구사항-25, 요구사항-26, 요구사항-43)
 - [StrykerJS](https://stryker-mutator.io/docs/stryker-js/introduction/): mutation candidate plan과 raw result backend로 사용한다. Stryker 자체 score나 `Failed` 이름만으로 killed를 확정하지 않는다. (공통규칙-02, 요구사항-04, 요구사항-20, 요구사항-26, 요구사항-43)
 
-## Go
-
-- [go/ast](https://pkg.go.dev/go/ast): function, method, function literal 분석에 사용한다. (요구사항-10, 요구사항-18, 요구사항-39)
-- [go test command](https://pkg.go.dev/cmd/go#hdr-Test_packages): fresh baseline·coverage와 공식 JSON event 경계에 사용한다. (요구사항-14, 요구사항-15, 요구사항-22, 요구사항-26, 요구사항-39)
-- [crap4go](https://github.com/unclebob/crap4go): CRAP corpus 비교 자료로만 사용한다. (공통규칙-06, 요구사항-36)
-- [mutate4go](https://github.com/unclebob/mutate4go): 향후 SENTINEL_GO에 고정 commit을 vendor한 뒤 operator를 보존하고 execution·typed runner·machine-report 경계만 patch할 예정이다. 현재 구현 완료 상태를 뜻하지 않는다. (공통규칙-02, 공통규칙-06, 요구사항-39, 요구사항-43)
-
 ## Java
 
 - [JDK compiler tree API](https://docs.oracle.com/en/java/javase/17/docs/api/jdk.compiler/com/sun/source/tree/package-summary.html): method, constructor, lambda inventory에 사용한다. (요구사항-10, 요구사항-18, 요구사항-40)
@@ -36,14 +29,6 @@ owner: Codex
 - [JUnit Platform TestExecutionListener](https://docs.junit.org/5.10.2/api/org.junit.platform.launcher/org/junit/platform/launcher/TestExecutionListener.html): assertion과 runner failure를 분리하는 typed event 경계다. (요구사항-22, 요구사항-25, 요구사항-26, 요구사항-40, 요구사항-43)
 - [crap4java](https://github.com/unclebob/crap4java): CRAP corpus 비교 자료로만 사용한다. (공통규칙-06, 요구사항-36)
 - [mutate4java](https://github.com/unclebob/mutate4java): 향후 SENTINEL_JAVA에 고정 commit을 vendor한 뒤 operator를 보존하고 standalone build·execution·typed runner·machine-report 경계만 patch할 예정이다. 현재 구현 완료 상태를 뜻하지 않는다. (공통규칙-02, 공통규칙-06, 요구사항-40, 요구사항-43)
-
-## Clojure
-
-- [tools.reader](https://github.com/clojure/tools.reader): project code를 실행하지 않는 form 분석에 사용한다. (요구사항-10, 요구사항-18, 요구사항-41)
-- [clojure.test](https://clojure.github.io/clojure/clojure.test-api.html): `:fail`과 `:error`를 분리하는 typed event 경계다. (요구사항-22, 요구사항-25, 요구사항-26, 요구사항-41, 요구사항-43)
-- [Cloverage](https://github.com/cloverage/cloverage): config가 고정한 form 또는 검증된 line coverage 원본에 사용한다. (요구사항-10, 요구사항-14, 요구사항-15, 요구사항-41)
-- [crap4clj](https://github.com/unclebob/crap4clj): CRAP corpus 비교 자료로만 사용한다. (공통규칙-06, 요구사항-36)
-- [clj-mutate](https://github.com/unclebob/clj-mutate): 향후 SENTINEL_CLJ에 고정 commit을 vendor한 뒤 mutation rule을 보존하고 execution·typed runner·machine-report·isolation 경계만 patch할 예정이다. 현재 구현 완료 상태를 뜻하지 않는다. (공통규칙-02, 공통규칙-06, 요구사항-41, 요구사항-43)
 
 ## 공통 계약과 저장소
 
@@ -55,4 +40,4 @@ owner: Codex
 
 |날짜|변경|연결 계약|
 |---|---|---|
-|2026-09-02|coverage.py JSON 공식 문서 URL을 교정하고 모든 참고자료에 추적 ID를 추가했다. Robert mutation backend 3종은 향후 vendor·patch 예정임을 명확히 했다.|공통규칙-02, 공통규칙-06, 요구사항-03, 요구사항-04, 요구사항-39, 요구사항-40, 요구사항-41, 요구사항-43|
+|2026-09-02|coverage.py JSON 공식 문서 URL을 교정하고 모든 참고자료에 추적 ID를 추가했다. Robert mutation backend은 향후 vendor·patch 예정임을 명확히 했다.|공통규칙-02, 공통규칙-06, 요구사항-03, 요구사항-04, 요구사항-40, 요구사항-43|

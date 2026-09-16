@@ -101,6 +101,8 @@ def build_parser() -> argparse.ArgumentParser:
     setup.add_argument("--sources")
     # Omitted: every language the plugin supports (python, typescript, java) is prepared.
     setup.add_argument("--language", action="append", default=[], choices=sorted(SETUP_LANGUAGES))
+    setup.add_argument("--module-root", action="append", default=[], metavar="LANGUAGE=PATH",
+                       help="existing module folder relative to the project; repeat for each new language")
     setup.add_argument("--format", choices=("text", "json"), default="text")
     setup.add_argument("--python-requirements")
     setup.add_argument("--java-dependencies", action="store_true")
@@ -318,7 +320,8 @@ def _run_workspace(args: argparse.Namespace) -> int:
         # An experimental run may include unadmitted adapters, so a clean run is still not admitted.
         exit_code = 6
     passed = exit_code == 0
-    certified = passed and all(admitted[module.module_id] for module in modules)
+    certified = (passed and all(admitted[module.module_id] for module in modules)
+                 and all(observation.status == "passed" for observation in observations))
     payload = _envelope("check", selection, results, passed, exit_code, certified)
     _emit(payload, args.format)
     return exit_code

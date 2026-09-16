@@ -11,8 +11,8 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from .bundle import install_bundle
 from .errors import SentinelError
-from .gate import DEFAULT_GATE, Gate, override_gate
-from .workspace import MAX_CONFIG_BYTES, is_exact_semver, read_json
+from .gate import DEFAULT_GATE, Gate, load_gate, override_gate
+from .workspace import MAX_CONFIG_BYTES, is_exact_semver, parse_workspace, read_json_snapshot, require_exact_keys, workspace_config_path
 
 
 SETUP_LANGUAGES = {"python": "SENTINEL_PY", "typescript": "SENTINEL_TS", "java": "SENTINEL_JAVA"}
@@ -165,7 +165,7 @@ def _setup_language(
     language: str,
     sources: Path,
     tools: Path,
-    project: Path,
+    projects: Sequence[Path],
     python_requirements: Optional[str],
     java_dependencies: bool,
 ) -> Dict[str, object]:
@@ -189,12 +189,12 @@ def _setup_language(
         result["status"] = "bootstrapFailed"
         return result
     if language == "python" and python_requirements is not None:
-        if not _install_python_requirements(repository, project, python_requirements):
+        if not all(_install_python_requirements(repository, project, python_requirements) for project in projects):
             result["status"] = "requirementsFailed"
             return result
         result["pythonRequirements"] = python_requirements
     if language == "java" and java_dependencies:
-        if not _install_java_dependencies(repository, project):
+        if not all(_install_java_dependencies(repository, project) for project in projects):
             result["status"] = "dependenciesFailed"
             return result
         result["javaDependencies"] = JAVA_DEPENDENCY_DIRECTORY
@@ -214,14 +214,61 @@ def _setup_language(
     return result
 
 
-def _existing_modules(path: Path, replaced: Sequence[str]) -> List[Dict[str, object]]:
-    if not path.exists():
-        return []
-    payload = read_json(path, MAX_CONFIG_BYTES, "workspace config")
-    modules = payload.get("modules") if isinstance(payload, dict) else None
-    if not isinstance(modules, list):
-        return []
-    return [item for item in modules if isinstance(item, dict) and item.get("language") not in replaced]
+def _prepare_workspace(project: Path, config_name: str, languages: Sequence[str], args) -> Tuple[Dict[str, object], Gate, Optional[bytes]]:
+    """Resolve and validate the complete layout before downloading or installing anything."""
+
+    path = workspace_config_path(project, config_name, allow_missing=True)
+    original_bytes = None
+    if path.exists():
+        document, original_bytes = read_json_snapshot(path, MAX_CONFIG_BYTES, "workspace config")
+        if not isinstance(document, dict):
+            raise SentinelError("invalidType", "workspace config must be an object", 3)
+        require_exact_keys(document, ("schemaVersion", "modules"), ("gate",), "workspace config")
+        modules = document["modules"]
+        if not isinstance(modules, list) or any(not isinstance(module, dict) for module in modules):
+            raise SentinelError("invalidModules", "workspace modules must be objects", 3)
+        existing_gate = load_gate(document.get("gate"))
+    else:
+        document = {"schemaVersion": "sentinel-workspace-v1", "modules": []}
+        existing_gate = DEFAULT_GATE
+    gate = override_gate(existing_gate, args.crap_max, args.mutation_min)
+    roots = {}
+    for mapping in getattr(args, "module_root", []):
+        language, separator, root = mapping.partition("=")
+        if not separator or language not in languages or not root or language in roots:
+            raise SentinelError("usageError", "--module-root requires one selected language=relative/path per language", 3)
+        roots[language] = root
+    modules = document["modules"]
+    for language in languages:
+        existing = [module for module in modules if module.get("language") == language]
+        if existing:
+            if language in roots:
+                if len(existing) != 1:
+                    raise SentinelError("usageError", "--module-root is ambiguous for multiple modules of one language", 3)
+                existing[0]["root"] = roots[language]
+            continue
+        root = roots.get(language)
+        if root is None:
+            if len(languages) != 1 or modules:
+                raise SentinelError("usageError", f"set --module-root {language}=relative/path for each new language", 3)
+            root = "."
+        module = {"id": language, "language": language, "root": root, "toolVersion": "0.0.0", "toolDigest": "0" * 64}
+        if language in CONFIGURED_LANGUAGES:
+            module["config"] = PROJECT_CONFIG
+        modules.append(module)
+    document["gate"] = gate.as_json()
+    # Default project configs are created only after setup succeeds; validate all other fields now.
+    validation_modules = []
+    for module in modules:
+        validated = dict(module)
+        if (module.get("language") in languages and module.get("config") == PROJECT_CONFIG
+                and isinstance(module.get("root"), str)):
+            config_path = project / module["root"] / PROJECT_CONFIG
+            if not config_path.exists() and not config_path.is_symlink():
+                validated.pop("config")
+        validation_modules.append(validated)
+    parse_workspace(project, dict(document, modules=validation_modules))
+    return document, gate, original_bytes
 
 
 def _replace_file(path: Path, document: Dict[str, object]) -> None:
@@ -231,21 +278,21 @@ def _replace_file(path: Path, document: Dict[str, object]) -> None:
     os.replace(temporary, path)
 
 
-def _write_workspace(project: Path, config_name: str, installed: Dict[str, Dict[str, object]], gate: Gate) -> None:
-    path = project / config_name
-    modules = _existing_modules(path, tuple(installed))
-    for language, result in installed.items():
-        module: Dict[str, object] = {
-            "id": language,
-            "language": language,
-            "root": ".",
-            "toolVersion": result["toolVersion"],
-            "toolDigest": result["toolDigest"],
-        }
-        if language in CONFIGURED_LANGUAGES:
-            module["config"] = PROJECT_CONFIG
-        modules.append(module)
-    _replace_file(path, {"schemaVersion": "sentinel-workspace-v1", "gate": gate.as_json(), "modules": modules})
+def _require_unchanged_workspace(project: Path, config_name: str, original_bytes: Optional[bytes]) -> None:
+    path = workspace_config_path(project, config_name, allow_missing=True)
+    current = read_json_snapshot(path, MAX_CONFIG_BYTES, "workspace config")[1] if path.exists() else None
+    if current != original_bytes:
+        raise SentinelError("workspaceChanged", "workspace config changed during setup; kept the newer file, retry setup", 3)
+
+
+def _write_workspace(project: Path, config_name: str, document: Dict[str, object], installed: Dict[str, Dict[str, object]], original_bytes: Optional[bytes]) -> None:
+    for module in document["modules"]:
+        result = installed.get(module["language"])
+        if result is not None:
+            module.update(toolVersion=result["toolVersion"], toolDigest=result["toolDigest"])
+    parse_workspace(project, document)
+    _require_unchanged_workspace(project, config_name, original_bytes)
+    _replace_file(project / config_name, document)
 
 
 def _ensure_project_config(project: Path, languages: Sequence[str]) -> Optional[str]:
@@ -263,7 +310,6 @@ def run_setup(args) -> Tuple[Dict[str, object], int]:
     project = Path(args.project or os.getcwd()).absolute()
     if not project.is_dir():
         raise SentinelError("missingProject", "project directory does not exist", 3)
-    gate = override_gate(DEFAULT_GATE, args.crap_max, args.mutation_min)
     tools = Path(args.tools).absolute() if args.tools else project / ".sentinel-tools"
     sources = Path(args.sources).absolute() if args.sources else default_sources()
     languages = _unique(args.language) or sorted(SETUP_LANGUAGES)
@@ -273,16 +319,25 @@ def run_setup(args) -> Tuple[Dict[str, object], int]:
     java_dependencies = bool(getattr(args, "java_dependencies", False))
     if java_dependencies and "java" not in languages:
         raise SentinelError("usageError", "--java-dependencies needs --language java", 3)
+    document, gate, original_bytes = _prepare_workspace(project, args.config, languages, args)
     results = [
-        _setup_language(language, sources, tools, project, requirements, java_dependencies)
+        _setup_language(language, sources, tools,
+                        [project / module["root"] for module in document["modules"] if module["language"] == language],
+                        requirements, java_dependencies)
         for language in languages
     ]
     installed = {item["language"]: item for item in results if item["status"] == "installed"}
     passed = len(installed) == len(languages)
     project_config = None
     if passed:
-        _write_workspace(project, args.config, installed, gate)
-        project_config = _ensure_project_config(project, languages)
+        _require_unchanged_workspace(project, args.config, original_bytes)
+        config_results = [
+            _ensure_project_config(project / module["root"], [module["language"]])
+            for module in document["modules"]
+            if module["language"] in languages and module.get("config") == PROJECT_CONFIG
+        ]
+        project_config = "created" if "created" in config_results else "kept" if config_results else None
+        _write_workspace(project, args.config, document, installed, original_bytes)
     payload = {
         "schemaVersion": "sentinel-setup-result-v1",
         "command": "setup",

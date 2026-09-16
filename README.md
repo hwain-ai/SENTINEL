@@ -2,9 +2,9 @@
 
 SENTINEL은 하나의 명령으로 등록된 프로젝트를 검사하고, 필요한 언어 도구만 버전을 고정해 설치하는 로컬 실행기입니다.
 
-- 플러그인이 지원하는 언어: Python, TypeScript, Java 세 가지입니다. 각 언어는 공개 프로젝트에서 원본 도구와 결과를 대조해 확인했습니다. Go 는 실험 연결만 있고 Clojure 는 미연결이라 플러그인 범위에 넣지 않습니다.
+- 플러그인이 지원하는 언어: Python, TypeScript, Java 세 가지입니다. 각 언어는 공개 프로젝트에서 원본 도구와 결과를 대조해 확인했습니다.
 - 기본 `check` 는 승인된 도구 묶음만 실행합니다. 승인이란 각 언어 검사기 저장소의 CI(자체 시험 전체)를 통과한 commit 의 어댑터를 이 저장소의 `src/sentinel/admission.json` 에 기록한 것이고, 모든 모듈이 승인된 묶음으로 통과하면 결과가 `certified=true` 가 됩니다. 승인되지 않은 묶음은 `--experimental` 로만 실행되며 그 결과는 인증되지 않습니다.
-- 최신 진행 상황: [완료한 것·현재 작업·남은 세 묶음](docs/exec-plans/active/2026-09-sentinel-unified-entry.md#현재-진행-순서)에서 확인합니다. 자세한 시험 기록은 사용법과 분리합니다.
+- 최신 진행 상황은 [현재 진행 순서](docs/exec-plans/active/2026-09-sentinel-unified-entry.md#현재-진행-순서), 실제 설치·호출 결과는 [호스트·WSL 검증 기록](docs/references/sentinel-host-validation.md)에서 확인합니다.
 
 ## 현재 제공하는 것
 
@@ -23,27 +23,30 @@ SDK는 해당 언어의 프로그램을 빌드하고 실행하는 도구 모음�
 
 ## 지원 플랫폼
 
-Linux(x86_64, arm64)와 macOS(Intel, Apple Silicon)에서 씁니다. Windows 는 WSL2 안에서 씁니다(Python 검사기의 고정 mutmut 이 네이티브 Windows 실행을 거부합니다). 언어 저장소마다 `scripts/toolchain.py`(표준 라이브러리만 쓰는 Python 실행기)가 플랫폼을 감지해 잠금 파일의 해당 항목으로 SDK 를 받고 지문을 대조하며, setup 은 이 실행기를 sentinel 자신의 인터프리터로 부릅니다. 언어 도구 묶음의 진입점이 Python 스크립트이면 check 도 같은 인터프리터(`-I -B`)로 실행하므로 `/usr/bin/python3` 가 없는 macOS 에서도 동작합니다. 세 언어 저장소의 CI 가 네 플랫폼(ubuntu-latest, ubuntu-24.04-arm, macos-15, macos-15-intel)에서 자체 시험을 돌립니다.
+통합 실행기의 현재 지원 경로는 **Linux이며 Windows에서는 WSL2 내부에 설치해서 사용합니다.** 이번 실제 검증 환경은 Ubuntu x86_64 / WSL2입니다. Windows의 Codex·Claude Code는 `wsl.exe`로 Linux 실행 파일을 호출합니다. CLI·언어 도구·검사할 프로젝트는 WSL의 Linux 파일시스템에 준비하는 것을 권장합니다. Windows에서 변환된 줄바꿈은 승인된 실행 파일 지문과 달라질 수 있습니다.
+
+macOS의 통합 설치는 현재 지원하지 않습니다. 묶음 게시에 Linux `renameat2`가 필요하기 때문입니다. 언어 검사기별 SDK 잠금과 여러 플랫폼 CI가 있어도 통합 설치·호스트 호출의 지원을 뜻하지 않습니다. 다른 CPU·커널 조합도 해당 경로를 별도로 검증해야 합니다. WSL의 오래된 커널에서는 선택적 격리 코드의 일부 시험이 실패하며, 기본 세 언어 명령 시험과 구분해 [검증 기록](docs/references/sentinel-host-validation.md)에 남깁니다.
 
 ## 첫 실행 설정
 
-sentinel 명령을 설치한 뒤 검사할 프로젝트에서 한 번 실행합니다. 언어는 python, typescript, java 중에서 반복 지정하고, 생략하면 세 언어를 모두 준비합니다.
+sentinel 명령을 설치한 뒤 검사할 프로젝트에서 한 번 실행합니다. 언어는 python, typescript, java 중에서 반복 지정하고, 생략하면 세 언어를 모두 선택합니다. 새로 여러 언어를 설정할 때는 서로 겹치지 않는 기존 폴더를 `--module-root 언어=폴더`로 각각 지정해야 합니다. 단일 언어를 처음 설정할 때만 기본 폴더가 `.`입니다.
 
 ```bash
-# setup = 첫 실행 설정; --project . = 현재 프로젝트; --language = 준비할 언어(반복 가능)
+# api/와 web/가 이미 존재하는 프로젝트 예시. 실제 폴더명으로 바꾼다.
+# setup = 첫 실행 설정; --module-root = 언어별 검사 폴더
 # --crap-max 8 = CRAP 상한(기본 8); --mutation-min 100 = 변이 최소 kill 비율 %(기본 100)
-.venv/bin/sentinel setup --project . --language python --language typescript --crap-max 8 --mutation-min 100
+.venv/bin/sentinel setup --project . --language python --language typescript --module-root python=api --module-root typescript=web --crap-max 8 --mutation-min 100
 ```
 
-setup은 다음을 순서대로 합니다.
+setup은 아래 항목을 준비합니다. 폴더 구성을 먼저 검증하고 언어 도구·프로젝트 의존성 설치가 모두 성공하면 각 모듈 설정을 만든 뒤 workspace를 마지막에 기록합니다.
 
 1. 언어 저장소를 `~/.sentinel/sources/SENTINEL_PY` 같은 폴더에 둡니다. 없으면 github.com/hwain-ai 의 같은 이름 저장소를 git clone 합니다. 다른 위치는 `--sources`로 지정합니다.
 2. 각 저장소의 `sentinel-tool/setup.sh`를 실행합니다. 이 스크립트는 잠금 파일의 공식 주소·SHA-256으로 언어 SDK를 내려받고 검사기를 준비합니다. 이미 준비돼 있으면 확인만 하고 지나갑니다. 세 언어를 모두 준비하면 약 2GB를 내려받습니다.
 3. 저장소의 `sentinel-tool/sentinel-tool` 실행 파일과 저장소 위치를 적은 `home` 파일로 도구 묶음을 만들어 `--tools`(기본 프로젝트의 .sentinel-tools)에 설치합니다.
-4. `sentinel.workspace.json`에 언어별 모듈과 `gate`(crapMax, mutationMin)를 씁니다. 같은 언어의 기존 모듈은 바꾸고 다른 언어 모듈은 유지합니다.
-5. python·typescript 검사기가 읽는 `sentinel.config.json`이 없으면 기본값(소스 `src/`, 테스트 `tests/` 또는 `test/`)으로 만듭니다. 이미 있으면 건드리지 않습니다. 결과의 projectConfig가 created이면 실제 폴더 구조에 맞게 고칩니다. 생산도 테스트도 아닌 소스(docs/conf.py, build.config.ts 등)가 있어 검사가 unclassifiedSource 로 거부되면 그 모듈의 `excluded` 글롭 목록에 적습니다.
-6. Python 프로젝트의 테스트가 외부 패키지를 쓰면 `--python-requirements requirements.txt`(프로젝트 기준 상대 경로)를 함께 줍니다. 검사기의 고정 Python으로 그 목록을 wheel 만으로 `<프로젝트>/.sentinel-deps`에 설치하고, 검사 때 PYTHONPATH에 올립니다. 이 폴더는 분석·변이 대상이 아니므로 `.gitignore`에 넣습니다. 캐시에 없으면 공식 인덱스에서 내려받으며, 목록에 지문이 없으면 지문 검증도 없습니다.
-7. Maven 프로젝트(`pom.xml`)는 `--java-dependencies`를 함께 줍니다. 검사기의 고정 JDK·Maven으로 그 프로젝트의 기본 시험 빌드(`mvn test`)를 온라인으로 한 번 실행해 빌드 플러그인과 의존성을 `<프로젝트>/.sentinel-m2`에 받습니다. 이후 검사는 이 폴더만으로 오프라인 실행되며, 폴더가 없으면 검사기의 잠긴 저장소만 쓰므로 외부 의존성이 있는 프로젝트는 검사가 실패합니다. 이 폴더도 `.gitignore`에 넣습니다.
+4. `sentinel.workspace.json`에 언어별 모듈과 `gate`(crapMax, mutationMin)를 씁니다. 기존 모듈의 ID·폴더·설정과 기준값은 보존하고 선택한 언어의 도구 버전·지문만 갱신합니다. 폴더·기준값을 명시하면 그 값으로 바꿉니다. 같은 언어의 모듈이 여러 개이면 언어 하나에 폴더 하나를 지정하는 변경은 모호하므로 거부합니다. 잘못된 폴더 구성은 다운로드 전에 거부합니다.
+5. Python·TypeScript 검사기가 읽는 `sentinel.config.json`을 **각 모듈 폴더 안에** 만듭니다. 기본값은 소스 `src/`, 테스트 `tests/` 또는 `test/`이며, 기존 파일이나 별도 사용자 설정 경로는 보존합니다. 결과의 projectConfig가 created이면 실제 폴더 구조에 맞게 고칩니다. 생산도 테스트도 아닌 소스(docs/conf.py, build.config.ts 등)가 있어 검사가 unclassifiedSource로 거부되면 그 모듈의 `excluded` 글롭 목록에 적습니다.
+6. Python 테스트가 외부 패키지를 쓰면 `--python-requirements requirements.txt`를 함께 줍니다. 이 경로는 **각 Python 모듈 기준**입니다. 검사기의 고정 Python으로 wheel만 `<모듈>/.sentinel-deps`에 설치하고 검사 때 PYTHONPATH에 올립니다. 이 폴더는 분석·변이 대상이 아니므로 `.gitignore`에 넣습니다. 캐시에 없으면 공식 인덱스에서 내려받으며, 목록에 지문이 없으면 지문 검증도 없습니다.
+7. Maven 프로젝트는 `--java-dependencies`를 함께 줍니다. **각 Java 모듈의 `pom.xml`**에서 고정 JDK·Maven으로 `mvn test`를 온라인으로 한 번 실행해 `<모듈>/.sentinel-m2`에 의존성을 받습니다. 이후 검사는 이 폴더로 오프라인 실행됩니다. 폴더가 없으면 검사기의 잠긴 저장소만 사용하므로 외부 의존성이 있는 프로젝트는 실패할 수 있습니다. 이 폴더도 `.gitignore`에 넣습니다.
 
 ## 원본 도구보다 kill 수가 적게 나오는 이유
 
@@ -57,7 +60,7 @@ SENTINEL 은 변이를 잡은 테스트 실패가 단언(assert) 실패일 때�
 
 ## 변경분만 검사
 
-`check --changed`는 git 으로 변경된 파일만 검사 대상으로 넘깁니다. 기준은 `--changed-base`(기본 HEAD)와 작업 트리의 차이이며, 아직 추가하지 않은 새 파일도 포함하고 지운 파일은 제외합니다. 각 모듈에는 그 모듈 폴더 안의 변경 파일만 모듈 기준 상대 경로로 전달되고, 변경 파일이 하나도 없는 모듈은 도구를 실행하지 않고 `noChanges`(종료 0)로 표시합니다. 언어 도구는 전달받은 경로 중 생산 코드만 CRAP·변이 대상으로 삼고 테스트는 전체를 실행하며, 생산 코드 변경이 없으면 판정할 대상이 없으므로 통과로 응답합니다. 프로젝트가 git 작업 트리가 아니거나 기준 ref 가 없으면 종료 3 으로 거부하고, Go 모듈에는 아직 지원하지 않습니다.
+`check --changed`는 git 으로 변경된 파일만 검사 대상으로 넘깁니다. 기준은 `--changed-base`(기본 HEAD)와 작업 트리의 차이이며, 아직 추가하지 않은 새 파일도 포함하고 지운 파일은 제외합니다. 각 모듈에는 그 모듈 폴더 안의 변경 파일만 모듈 기준 상대 경로로 전달되고, 변경 파일이 하나도 없는 모듈은 도구를 실행하지 않고 `noChanges`(종료 0)로 표시합니다. 언어 도구는 전달받은 경로 중 생산 코드만 CRAP·변이 대상으로 삼고 테스트는 전체를 실행하며, 생산 코드 변경이 없어 실제 검사를 생략하면 어댑터도 `noChanges`로 응답하며 인증하지 않습니다. 프로젝트가 git 작업 트리가 아니거나 기준 ref가 없으면 종료 3으로 거부합니다.
 
 ```bash
 # --changed = 기준 커밋 이후 바뀐 파일만; --changed-base main = 기준을 main 브랜치로
@@ -93,7 +96,7 @@ uv pip install --python .venv/bin/python --link-mode=copy .
 |최상위 modules|1개 이상 128개 이하의 모듈 목록|
 |최상위 gate|선택 항목. crapMax(기본 "8")와 mutationMin(기본 "100") 문자열|
 |모듈 id|영문자로 시작하는 영숫자·밑줄·하이픈 식별자, 최대 64자|
-|모듈 language|python, typescript, go, java, clojure 중 하나|
+|모듈 language|python, typescript, java 중 하나|
 |모듈 root|프로젝트 기준 상대 폴더 경로. 프로젝트 자체는 점 한 개로 지정한다.|
 |모듈 toolVersion|해당 도구 묶음의 정확한 버전. 예시: 1.2.3. 실제 배포 버전과 일치해야 한다.|
 |모듈 toolDigest|해당 묶음의 sentinel-tool.json 원본 파일 SHA-256, 소문자 64자리|
@@ -110,7 +113,7 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 .venv/bin/sentinel plan --project . --language python --format json
 # doctor = 설치 지문 확인. 검사기와 프로젝트 테스트는 실행하지 않음
 .venv/bin/sentinel doctor --project . --format json
-# check = 검사 요청(승인된 묶음만 실행); --timeout-seconds 7200 = 모듈당 실행 제한 7200초(생략하면 언어 도구 3600초, Go 900초, 최대 86400초)
+# check = 검사 요청(승인된 묶음만 실행); --timeout-seconds 7200 = 모듈당 실행 제한 7200초(생략하면 언어 도구 3600초, 최대 86400초)
 .venv/bin/sentinel check --project . --timeout-seconds 7200 --format json
 # --experimental = 승인되지 않은 묶음도 실행(결과는 인증되지 않음)
 .venv/bin/sentinel check --project . --experimental --format json
@@ -125,17 +128,13 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 |묶음 설정 필드|내용|
 |---|---|
 |schemaVersion|sentinel-tool-bundle-v1|
-|protocolVersion|일반 실행 파일은 sentinel-tool-protocol-v1, Go 격리 실행 설정은 sentinel-go-oci-v1|
+|protocolVersion|sentinel-tool-protocol-v1|
 |language|지원하는 언어 이름 하나|
 |version|이 묶음의 정확한 버전|
-|entrypoint|일반 묶음은 실행 파일, Go 묶음은 JSON 설정 파일의 상대 경로|
+|entrypoint|실행 파일의 상대 경로|
 |files|상대 파일 경로를 키로, 각 파일의 SHA-256을 값으로 가진 완전한 목록|
 
 entrypoint도 files에 포함하며 manifest 자체는 제외합니다. 미기재 파일, 파일 내용 불일치, 링크·특수 파일과 구성요소가 256개를 넘는 과도하게 깊은 상대 경로는 거부합니다. 최대 파일 4,096개, 파일당 16 MiB, 전체 64 MiB인 작은 실행 연결용 묶음입니다. Java SDK처럼 큰 언어 실행 환경 전체를 여기에 넣는 설계가 아닙니다.
-
-Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽고 기존 Go 격리 실행기를 직접 호출하므로 별도 실행 파일이나 관리 서버를 추가하지 않습니다. 검증된 SDK·도구·의존성은 Git 밖의 --tools 폴더에 미리 준비해야 합니다. 사용자가 지정한 프로젝트 복사본에 .git 또는 .sentinel이 있으면 거부합니다. [Go 연결 설정과 제한](docs/references/sentinel-execution-api.md#go-통합-명령의-실험-연결)을 참고하세요.
-
-현재 공개 Go 프로젝트 한 개에서 설치된 명령의 결과 반환·제한 실행·사용자 취소와 원본 보존·컨테이너 정리를 확인했습니다. 품질 결과는 통과가 아닌 qualityFailed/2였습니다. 이는 해당 실험 연결의 검증이며 모든 Go 프로젝트 지원이나 정식 품질 인증은 아닙니다.
 
 제작자는 manifest의 원본 지문을 별도로 제공해야 합니다. 사용자는 신뢰한 로컬 묶음 폴더를 install의 --bundle에, 그 지문을 --sha256에, 보관 폴더를 --tools에 지정합니다. 묶음과 보관 폴더 경로에는 상위 폴더로 이동하는 두 점을 넣지 않고 명확한 경로나 절대 경로를 사용합니다. 설치 주소는 보관 폴더/언어/버전/지문입니다. 기존 설치는 덮어쓰지 않으며 새 버전은 나란히 보관합니다. 이전 버전으로 되돌릴 때는 workspace의 버전과 지문을 이전 설치에 맞춥니다. 자동 업데이트·원격 패키지 검색·SDK 다운로드는 하지 않습니다.
 
@@ -147,9 +146,9 @@ Go 전용 형식은 현재 go 0.1.0만 받습니다. 실행기가 설정을 읽�
 
 ## 결과 해석과 안전 경계
 
-공통 결과의 selection이 allConfigured이면 등록 모듈 전체, partial이면 일부만 대상으로 했습니다. moduleCount는 그 개수입니다. results에는 모듈 식별자, 언어, 관측 상태, 관측 종료 코드만 담고 원본 로그나 경로는 싣지 않습니다.
+공통 결과의 selection이 allConfigured이면 등록 모듈 전체, partial이면 일부만 대상으로 했습니다. moduleCount는 그 개수입니다. results에는 모듈 식별자, 언어, 관측 상태, 관측 종료 코드와 해당하는 경우 승인 여부(admitted)를 담습니다. 원본 로그나 경로는 싣지 않습니다.
 
-plan·doctor의 pass는 각각 범위 확인·설치 확인의 성공일 뿐입니다. doctor 결과의 모듈마다 `admitted`가 붙어 그 묶음이 승인 목록에 있는지 알려 줍니다. 기본 check는 모든 모듈이 승인된 묶음이고 모두 passed일 때만 pass=true, certified=true, 종료 0입니다. 승인되지 않은 모듈이 있으면 그 모듈은 backendNotAdmitted(6)로 남고 시작하지 않으며, 전체는 certified=false입니다. `--experimental` 검사는 언제나 certified=false이고 자식이 모두 passed여도 전체 종료 코드는 미승인 실행을 뜻하는 6입니다.
+plan·doctor의 pass는 각각 범위 확인·설치 확인의 성공일 뿐입니다. doctor의 `admitted`는 묶음이 승인 목록에 있는지 알려 줍니다. 기본 check는 선택한 모든 모듈이 승인됐고 **실제로 검사되어 `passed`**일 때만 certified=true입니다. `--changed`에서 하나라도 `noChanges`이면 정상 종료(pass=true, 종료 0)할 수 있지만 certified=false이며, 검사하지 않은 코드를 품질 통과로 표시하면 안 됩니다. 부분 선택의 인증은 그 선택 범위에만 적용됩니다. 승인되지 않은 모듈은 실행하지 않고 backendNotAdmitted(6), certified=false입니다. `--experimental`은 언제나 certified=false이며 모두 passed여도 종료 6입니다.
 
 ## 승인 목록(admission.json)
 
@@ -171,16 +170,14 @@ python3 scripts/admission.py lint
 
 취소와 자식 프로세스 정리 실패가 겹치면 해당 모듈은 backendError=6으로 남기고, 아직 시작하지 않은 모듈은 cancelled=8로 표시합니다. 이후 도구는 실행하지 않습니다. 명령의 출력 통로가 닫혔거나 사용할 수 없으면 내부 예외 대신 종료 코드 3으로 끝냅니다.
 
-일반 실행 파일 형식에는 실행 시간과 합계 1 MiB 출력 제한, 최소 환경 변수, 프로세스 그룹 정리를 적용합니다. 이것만으로 파일·네트워크·자원을 강제로 격리하지는 못합니다. Go 전용 형식은 별도로 고정된 컨테이너 제한을 사용하지만 모든 악성 코드와 운영체제 취약점을 막는다는 보장은 아닙니다. 지문 일치도 제작자의 신뢰나 악성 코드 부재를 증명하지 않습니다.
+일반 실행 파일 형식에는 실행 시간과 합계 1 MiB 출력 제한, 최소 환경 변수, 프로세스 그룹 정리를 적용합니다. 이것만으로 파일·네트워크·자원을 강제로 격리하지는 못합니다. 지문 일치도 제작자의 신뢰나 악성 코드 부재를 증명하지 않습니다.
 
 ## 개발자 참고
 
-실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [Go 검증 기록](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 이 저장소 자체가 마켓플레이스입니다. Claude Code는 `claude plugin marketplace add hwain-ai/SENTINEL` 뒤 `claude plugin install sentinel@sentinel`, Codex는 `codex plugin marketplace add hwain-ai/SENTINEL` 뒤 `codex plugin add sentinel`로 설치합니다. 플러그인은 지침만 담으므로 sentinel 명령과 setup은 따로 실행해야 합니다.
+실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [세 언어 비교 기록](docs/references/sentinel-original-tool-comparison.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 이 저장소 자체가 마켓플레이스입니다. Claude Code는 `claude plugin marketplace add hwain-ai/SENTINEL` 뒤 `claude plugin install sentinel@sentinel`, Codex는 `codex plugin marketplace add hwain-ai/SENTINEL` 뒤 `codex plugin add sentinel@sentinel`로 설치합니다. 플러그인은 지침만 담으므로 sentinel 명령과 setup은 따로 실행해야 합니다.
 
 ## 남은 단계
 
-1. Python·Java의 실제 검사 오류를 해결하고, 같은 프로젝트에서 도구를 비교한 뒤 통합 명령에 연결한다.
-2. TypeScript·Clojure의 독립 설치와 실제 프로젝트 검증을 마치고 통합 명령에 연결한다.
-3. 검증된 언어 범위만 Codex·Claude Code의 설치 플러그인에 연결한다. 플러그인은 동일 sentinel 명령을 호출하며 별도 품질 판정을 하지 않는다.
+현재 실제 결과와 남은 항목은 [호스트·WSL 검증 기록](docs/references/sentinel-host-validation.md)에서 관리합니다. 과거의 언어 연결·CI 승인 대기와 현재의 호스트 인증·실제 호출 검증을 구분합니다. 플러그인은 동일 sentinel 명령을 호출하며 별도 품질 판정을 하지 않습니다.
 
-각 언어는 원래 빌드·품질 결과·원본 보호·중단 뒤 정리가 확인된 범위만 지원 대상으로 기록합니다. 이 저장소의 단위·프로세스 테스트 통과는 위 세 단계의 완료 근거가 아닙니다. 기존 언어별 검사 도구의 기본값과 잠금 버전은 바꾸지 않습니다.
+각 언어는 원래 빌드·품질 결과·원본 보호·중단 뒤 정리가 확인된 범위만 지원 대상으로 기록합니다. 단위·프로세스 테스트 통과를 실제 호스트 검증 대신 사용하지 않습니다. 기존 언어별 검사 도구의 기본값과 잠금 버전은 유지합니다.

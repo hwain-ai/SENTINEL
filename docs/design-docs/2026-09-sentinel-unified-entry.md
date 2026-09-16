@@ -2,7 +2,7 @@
 type: design-doc
 slug: sentinel-unified-entry
 created: 2026-09-08
-updated: 2026-09-10
+updated: 2026-09-16
 status: approved-direction
 owner: Codex
 spec: docs/product-specs/2026-09-sentinel-unified-entry.md
@@ -12,7 +12,11 @@ related:
 
 # SENTINEL 통합 실행기 설계
 
-결론: 독립적인 `SENTINEL` front door가 명시적 module 설정과 버전 고정된 언어 bundle을 연결한다. 다섯 언어 runtime을 서로 import하거나 SPEC에 mutation 엔진을 넣지 않는다.
+결론: 독립적인 `SENTINEL` front door가 명시적 module 설정과 버전 고정된 언어 bundle을 연결한다. 세 언어 runtime을 서로 import하거나 SPEC에 mutation 엔진을 넣지 않는다.
+
+## 현재 경계
+
+일반 세 언어 check는 CI 승인 목록과 프로세스 실행 경계를 사용한다. 아래 컨테이너 설계·준비 API는 별도 기능이며 일반 check에 자동 보안 격리를 제공하지 않는다. Windows 호스트는 WSL 안의 CLI를 호출하며 통합 설치는 Linux renameat2를 필요로 한다. macOS는 통합 설치 미지원이다. 최신 실제 결과는 [호스트·WSL 검증 기록](../references/sentinel-host-validation.md)을 참조한다.
 
 ## 구조와 책임
 
@@ -25,7 +29,7 @@ related:
 
 첫 front door는 Python 3.9 이상 표준 라이브러리만 사용하는 작은 별도 package로 구현한다. 기존 언어 SDK·backend의 version은 바꾸지 않는다. 추후 배포 시 독립 실행 파일로 묶을 수 있지만 이번에는 필요 없는 언어 SDK를 묶지 않는다.
 
-2026-09-10 사용자 확정: 컨테이너 생성·시간 제한·정리는 통합 SENTINEL이 직접 소유한다. 언어별 연결부는 입력 준비·검사 명령·결과 변환을 맡고, 플러그인은 같은 통합 명령을 호출한다. 별도 상주 관리 프로그램은 추가하지 않는다. Go의 설치된 통합 명령에는 이 구조를 적용했으며, 다른 언어는 같은 경계를 유지하며 순차 연결한다. 부모 SENTINEL 자체가 SIGKILL로 사라진 경우의 다음 실행 복구는 별도 검증 항목이지 자동으로 해결되는 보장이 아니다. 기존 일반 bundle의 요청·응답 계약은 조용히 바꾸지 않는다.
+2026-09-10 사용자 확정: 컨테이너 생성·시간 제한·정리는 통합 SENTINEL이 직접 소유한다. 언어별 연결부는 입력 준비·검사 명령·결과 변환을 맡고, 플러그인은 같은 통합 명령을 호출한다. 별도 상주 관리 프로그램은 추가하지 않는다. 각 언어는 같은 경계를 유지하며 연결한다. 부모 SENTINEL 자체가 SIGKILL로 사라진 경우의 다음 실행 복구는 별도 검증 항목이지 자동으로 해결되는 보장이 아니다. 기존 일반 bundle의 요청·응답 계약은 조용히 바꾸지 않는다.
 
 ## 공식 배포처의 최초 준비 신뢰
 
@@ -35,9 +39,13 @@ related:
 
 ## 설정과 선택
 
-`sentinel.workspace.json`에는 schemaVersion, modules를 둔다. module은 id, language, root, toolVersion, toolDigest를 필수로 가지며 config는 선택 항목이다. language의 허용값은 python, typescript, go, java, clojure다. root와 config는 workspace 안의 실제 경로만 허용한다. symlink, 경로 탈출, 같은 경로 또는 조상·자손 module 중복, 중복 id, 알 수 없는 field, 빈 modules는 거부한다. module별 source·build·test 세부 사항은 native config에 남기며 front door가 만들어내지 않는다.
+`sentinel.workspace.json`에는 schemaVersion, modules를 둔다. module은 id, language, root, toolVersion, toolDigest를 필수로 가지며 config는 선택 항목이다. language의 허용값은 python, typescript, java다. root와 config는 workspace 안의 실제 경로만 허용한다. symlink, 경로 탈출, 같은 경로 또는 조상·자손 module 중복, 중복 id, 알 수 없는 field, 빈 modules는 거부한다. module별 source·build·test 세부 사항은 native config에 남기며 front door가 만들어내지 않는다.
 
 `check`와 `doctor`는 기본으로 모든 설정 module을 선택한다. `--language` 또는 `--module`은 선택 범위를 줄이며, 없는 대상을 요청하면 사용 오류다. 같은 종류의 선택 옵션은 반복할 수 있지만 두 종류를 한 호출에 혼용하면 거부해 의도하지 않은 합집합 실행을 막는다. 전체라는 표현은 `allConfigured`를 의미하며 repository의 모든 파일 발견이나 strict 전체 인증을 증명하지 않는다. 자동 탐지는 이후 설정 제안에만 사용하며 자동 실행 범위를 만들지 않는다.
+
+## 첫 설정과 기존 구성 보존
+
+새 단일 언어는 현재 폴더를 기본으로 쓴다. 여러 언어는 `setup --language python --language typescript --module-root python=api --module-root typescript=web`처럼 실제 모듈 폴더를 각각 명시한다. 다운로드 전에 최종 설정을 공통 검증기로 검증한다. 기존 ID·root·config·gate는 명시적 변경이 없는 한 유지한다. Python·TypeScript 설정과 Python·Java 의존성은 각 모듈 기준으로 준비한다. 긴 설치 중 workspace가 바뀌면 사용자의 편집을 덮어쓰지 않고 충돌로 종료한다.
 
 ## 선택형 로컬 설치
 
@@ -53,9 +61,9 @@ RISK(race): 게시에는 Linux renameat2의 no-replace 기능을 사용한다. �
 
 실행기는 표준 입력의 JSON 요청 한 개를 받고 표준 출력으로 JSON 결과 한 개를 반환한다. 요청에는 protocolVersion, requestId, command, moduleId, language, projectRoot, config가 있다. projectRoot는 선택한 module의 절대 경로이며, 자식 process의 작업 디렉터리도 그 module이다. config가 없는 경우 null이다. command는 check만 허용한다. doctor는 통합 실행기 안에서 설치 파일만 확인하고 protocol 요청이나 자식 process를 만들지 않는다. 응답은 protocolVersion, requestId, command, moduleId, language, toolVersion, status, exitCode, passed만 허용한다. 임의 메시지·경로·소스·raw log는 공용 결과에 옮기지 않는다.
 
-protocol의 status와 exitCode의 고정 대응은 passed=0, toolError=1, qualityFailed=2, usageConfigError=3, baselineFailed=4, dependencyError=5, backendError=6, evidenceError=7, cancelled=8이다. passed status에서만 passed=true다. ready는 doctor가 내는 로컬 설치 확인 상태이며 protocol 응답이 아니다. identity·자료형·상태·process exit·응답 exit가 다르거나 JSON key가 중복되면 backendError다. 오류의 raw stdout·stderr는 출력하지 않는다. 각 module의 실제 관측 종료 코드를 먼저 모으고, 실패가 하나라도 있으면 고정 우선순위 7,1,5,6,8,4,3,2로 보존한다. 실제 실패가 없는 experimental check만 전체 종료 코드를 backendNotAdmitted의 6으로 바꾼다.
+protocol의 status와 exitCode의 고정 대응은 passed=0, noChanges=0, toolError=1, qualityFailed=2, usageConfigError=3, baselineFailed=4, dependencyError=5, backendError=6, evidenceError=7, cancelled=8이다. passed status에서만 passed=true다. noChanges는 실제 검사 대상이 없는 changed 요청에서만 허용하고 passed=false로 반환한다. 기존 실행기는 이 새 상태를 알지 못하면 backendError로 거부하므로 잘못 인증하는 방향으로 후퇴하지 않는다. ready는 doctor가 내는 로컬 설치 확인 상태이며 protocol 응답이 아니다. identity·자료형·상태·process exit·응답 exit가 다르거나 JSON key가 중복되면 backendError다. 오류의 raw stdout·stderr는 출력하지 않는다. 각 module의 실제 관측 종료 코드를 먼저 모으고, 실패가 하나라도 있으면 고정 우선순위 7,1,5,6,8,4,3,2로 보존한다. 실제 실패가 없는 experimental check만 전체 종료 코드를 backendNotAdmitted의 6으로 바꾼다.
 
-RISK(security): bundle은 사용자가 신뢰한 실행 코드다. hash 검사는 인증이나 sandbox가 아니며, 원본 프로젝트 경로를 받는 실행기의 악의적 접근을 막지 못한다. 첫 버전은 명시적인 `--experimental` check만 허용했다. 2026-09-13 사용자 승인(A안)으로 운영 격리 admission 대신 CI 기반 승인을 두었다. 승인 목록 `src/sentinel/admission.json`(sentinel-admission-v1)은 언어, 어댑터 버전, 어댑터 실행 파일 SHA-256, 원본 저장소·commit, 그 commit 의 성공한 CI 실행 주소, 승인 날짜를 항목으로 갖는다. 기본 check는 설치된 묶음의 매니페스트에 적힌 실행 파일 지문이 목록에 있을 때만 그 모듈을 실행하고, 없는 모듈은 child process 없이 backendNotAdmitted를 낸다. 모든 모듈이 승인된 묶음으로 passed이면 pass=true, certified=true, 종료 0이다. `--experimental`은 승인과 무관하게 실행하되 certified=false이고 실패가 없어도 종료 6이다. 네이티브 Go 묶음은 승인 대상이 아니다. 승인의 근거는 각 언어 저장소 CI 의 자체 시험 전체 통과이며, 이는 어댑터와 검사기가 그 commit 에서 스스로 약속한 계약을 지켰다는 뜻이지 검사 대상 프로젝트의 품질이나 실행 격리를 뜻하지 않는다. 승인 항목은 `scripts/admission.py add`가 GitHub API 로 CI 성공을 확인해 쓰고, SENTINEL CI 가 `lint`(항상)와 `verify`(읽기 토큰이 있을 때)로 목록을 검증한다.
+RISK(security): bundle은 사용자가 신뢰한 실행 코드다. hash 검사는 인증이나 sandbox가 아니며, 원본 프로젝트 경로를 받는 실행기의 악의적 접근을 막지 못한다. 첫 버전은 명시적인 `--experimental` check만 허용했다. 2026-09-13 사용자 승인(A안)으로 운영 격리 admission 대신 CI 기반 승인을 두었다. 승인 목록 `src/sentinel/admission.json`(sentinel-admission-v1)은 언어, 어댑터 버전, 어댑터 실행 파일 SHA-256, 원본 저장소·commit, 그 commit 의 성공한 CI 실행 주소, 승인 날짜를 항목으로 갖는다. 기본 check는 설치된 묶음의 매니페스트에 적힌 실행 파일 지문이 목록에 있을 때만 그 모듈을 실행하고, 없는 모듈은 child process 없이 backendNotAdmitted를 낸다. 선택한 모든 모듈이 승인된 묶음으로 실제 검사되어 passed이면 pass=true, certified=true, 종료 0이다. noChanges는 명령 성공과 품질 인증을 분리해 pass=true·종료 0이어도 certified=false로 표시한다. 검사 범위 안에 생산 코드가 없어 도구가 생략한 경우도 같은 미검사 의미를 보존한다. `--experimental`은 승인과 무관하게 실행하되 certified=false이고 실패가 없어도 종료 6이다. 승인의 근거는 각 언어 저장소 CI 의 자체 시험 전체 통과이며, 이는 어댑터와 검사기가 그 commit 에서 스스로 약속한 계약을 지켰다는 뜻이지 검사 대상 프로젝트의 품질이나 실행 격리를 뜻하지 않는다. 승인 항목은 `scripts/admission.py add`가 GitHub API 로 CI 성공을 확인해 쓰고, SENTINEL CI 가 `lint`(항상)와 `verify`(읽기 토큰이 있을 때)로 목록을 검증한다.
 
 실행은 우선 순차로 한다. timeout과 전체 출력 byte 제한을 적용하고 process group을 종료·회수한다. 환경은 최소 PATH와 locale만 전달하며 사용자 secret 환경 변수를 상속하지 않는다. process group 탈출 차단, CPU·메모리·network·filesystem 보안 경계는 후속 sandbox 검증 대상이다. help·plan·doctor는 품질 검사를 실행하지 않는다. doctor는 bundle 설치 상태만 확인하며 실행 코드도 호출하지 않는다.
 
@@ -83,9 +91,9 @@ RISK(security): 같은 host의 Docker/커널은 신뢰 기반이다. 이 시험�
 
 ## 3~5수 앞의 결과와 회복
 
-1. 현재: 기존 여섯 저장소를 건드리지 않고 통합 명령과 설치·호출 계약을 시험한다.
+1. 현재: 명시적 폴더 설정과 미검사 결과를 세 언어·두 호스트에서 확인한다.
 2. 다음: native bundle을 언어별로 만들고 동일 실제 프로젝트·빌드 조합의 근거를 붙인다. CLI 차이는 해당 언어 adapter에서 처리한다.
-3. 운영 전: 원본 보호, filesystem/network 격리, 강제 종료·자원 제한을 검증하고 별도 admission 계약을 추가한다.
+3. 갱신: 변경한 어댑터는 새 버전과 성공한 CI 근거로 승인한다. 이전 버전은 별도 지문으로 보존한다. 운영 보안 격리는 CI 승인과 별도로 검증한다.
 4. 호스트 연결: 같은 CLI를 Codex·Claude Code skill에 연결한다. 명시적 검사부터 시작하며 자동 hook은 넣지 않는다.
 5. 6개월 후: 외부 검사 도구 변경은 해당 bundle과 호환성 시험에 한정한다. 호환성이 깨지면 이전 digest를 선택하고 전체 결과 계약·다른 언어 설치는 유지한다.
 
@@ -94,8 +102,6 @@ RISK(security): 같은 host의 Docker/커널은 신뢰 기반이다. 이 시험�
 - 2026-09-13 | CI 기반 승인(admission) 확정 | 변경: 운영 격리 admission 을 CI 통과 commit 의 어댑터 지문 목록으로 대체(A안). 기본 check 의 실행 조건, certified 의 의미, `--experimental` 의 남은 역할, 승인 항목의 근거와 한계를 기록 | 검증: 통합 시험 329개, 실제 Python 프로젝트에서 setup→doctor(admitted)→check 종료 0·certified=true, 빈 승인 목록에서 backendNotAdmitted 확인.
 
 - 2026-09-10 | 실행 책임과 공식 준비 신뢰 확정 | 변경: 사용자 승인에 따라 통합 SENTINEL의 컨테이너 수명 관리와 Maven Central·PyPI 최초 준비 범위를 명시 | 검증: 승인 문면을 실행 계획과 대조. 공급자 서명·실제 프로젝트 통과·운영 허용으로 확대 해석하지 않음.
-- 2026-09-09 | Go 설치·격리 기반의 실패 처리 검증 완료 | 변경: 입력 검사부터 종료 후 검사까지 취소 상태 유지, 기존 회수 실패 보존, 신호 처리기 복원과 경로 오류 비공개 처리 | 검증: 전체216 tests/10.962초, 재설치 source 일치, 독립 후속 ACCEPT, Go 실제 격리10종·복구와 공통 재시험·마지막 컨테이너0. [실제 관측과 한계](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)를 기준으로 전체 backend 비교·admission·plugin은 미완료로 유지.
-- 2026-09-09 | Task 2b 승인 이후 Go 독립 입력 연결 | 변경: 네 content-addressed root와 Go 전용 제한 profile을 공통 OCI lifecycle에 연결, 기존 no-host API 유지 | 검증: Task2b 최종 독립 승인과 새 설치본 재시험, 전체199 tests, Go 원래 make build·입력 보존. Go 전체 비교·운영 admission·plugin은 미완료이며 [실제 관측](https://github.com/hwain-ai/SENTINEL_GO/blob/main/docs/sentinel-go-native-validation.md)에 분리 기록.
 - 2026-09-09 | Task 2b 실행 연결 검증 및 최종 검토 대기 | 변경: raw image identity와 실제 container 생성·검사·회수, 고정 권한·자원과 취소 경계 구현 | 검증: 최신136 tests, 설치본의 filesystem·environment·network·cgroup·timeout·escape·OOM·PID·CPU·overflow·SIGINT 및 owned container 0. 독립 검토와 Task2c native input 연결은 진행 중
 - 2026-09-09 | Task 2 사전 검증 경계 | 변경: 기존 저장소 수정 없이 외부 승인 lock을 받는 읽기 전용 OCI 준비 API, 게시·취소 경계와 별도 runtime-root 필요성을 명시 | 검증: root의 최종114-test·설치본 Docker 조회·파일/FD/취소 반례 시험과 독립 v3 spec/quality 승인. 운영 admission·native bundle·plugin은 미완료
 

@@ -56,6 +56,13 @@ def make_bundle(parent, language="python", version="1.2.3", behavior="pass"):
     (bundle / "bin").mkdir(parents=True)
     counter = parent / (language + "-count")
     scripts = {
+        "no_changes": """
+            import json, sys
+            request = json.load(sys.stdin)
+            response = {key: request[key] for key in ('protocolVersion', 'requestId', 'command', 'moduleId', 'language')}
+            response.update(toolVersion='1.2.3', status='noChanges', exitCode=0, passed=False)
+            print(json.dumps(response))
+        """,
         "pass": """
             import json, os, sys
             request = json.load(sys.stdin)

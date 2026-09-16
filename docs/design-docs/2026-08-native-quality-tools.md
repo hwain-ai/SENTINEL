@@ -2,8 +2,8 @@
 type: design-doc
 slug: native-quality-tools
 created: 2026-08-31
-updated: 2026-09-08
-status: approved
+updated: 2026-09-16
+status: superseded
 owner: Codex
 spec: docs/product-specs/2026-08-native-quality-tools.md
 covers: 요구사항-01..요구사항-55
@@ -13,7 +13,9 @@ related:
 
 # SENTINEL 다언어 품질 게이트 설계
 
-이 설계는 Python·TypeScript·Go·Java·Clojure 프로젝트를 같은 기준으로 검사해 CRAP은 8.0 이하, mutation은 검사 대상 mutant 전부가 `killed`일 때만 합격시키고 그 근거를 프로젝트 안에 남긴다.
+> 2026-09-16 정리: 이 문서는 현재 공개 범위인 Python·TypeScript·Java에 해당하는 과거 설계 기록이다. 당시의 비공개 배포·엄격 격리 계획은 현재 실행 지시가 아니다. 현재 지원·승인·설치 상태는 [통합 실행 계획](../exec-plans/active/2026-09-sentinel-unified-entry.md)을 따른다. 기존 요구사항·작업 ID와 계약 식별자는 추적을 위해 보존한다.
+
+이 설계는 Python·TypeScript·Java 프로젝트를 같은 기준으로 검사해 CRAP은 8.0 이하, mutation은 검사 대상 mutant 전부가 `killed`일 때만 합격시키고 그 근거를 프로젝트 안에 남긴다.
 
 ## 이 문서를 읽기 전에
 
@@ -67,11 +69,11 @@ related:
 
 ## 1. 접근 요약
 
-`SENTINEL_SPEC`은 5개 실행형 SENTINEL이 따라야 할 공통 CLI 의미, JSON Schema, 종료 코드, strict gate, evidence, finding과 privacy 계약의 단일 진실 공급원이다. `SENTINEL_PY`, `SENTINEL_TS`, `SENTINEL_GO`, `SENTINEL_JAVA`, `SENTINEL_CLJ`는 각 언어의 구문과 coverage를 직접 해석해 CRAP을 계산하고, mutation은 고정된 기존 backend를 격리 실행한 뒤 공통 상태로 변환한다.
+`SENTINEL_SPEC`은 3개 실행형 SENTINEL이 따라야 할 공통 CLI 의미, JSON Schema, 종료 코드, strict gate, evidence, finding과 privacy 계약의 단일 진실 공급원이다. `SENTINEL_PY`, `SENTINEL_TS`, `SENTINEL_JAVA`는 각 언어의 구문과 coverage를 직접 해석해 CRAP을 계산하고, mutation은 고정된 기존 backend를 격리 실행한 뒤 공통 상태로 변환한다.
 
 Strict 인증은 backend가 표시하는 자체 점수를 믿지 않는다. SENTINEL이 전체 production inventory, fresh 실행, backend report 완전성, source 불변과 상태별 개수를 다시 검증하고 모든 in-scope mutant가 `killed`일 때만 통과시킨다. 실행 증거와 결함 이력은 검사받는 프로젝트가 소유하는 `.sentinel/`에 실행별 불변 bundle로 남기며, 중앙 서버나 자동 전송은 만들지 않는다.
 
-**전역 제약 확인:** 공통규칙-01..10을 모두 반영한다. 6개 저장소는 비공개·독립 설치 단위이고, upstream clone은 읽기 전용이다. Production 동작은 test-first로 구현하며 원본 source를 mutation 작업공간으로 사용하지 않는다. 각 저장소의 지식 문서는 OKF v0.2 bundle로 관리한다.
+**전역 제약 확인:** 공통규칙-01..10을 모두 반영한다. 4개 저장소는 비공개·독립 설치 단위이고, upstream clone은 읽기 전용이다. Production 동작은 test-first로 구현하며 원본 source를 mutation 작업공간으로 사용하지 않는다. 각 저장소의 지식 문서는 OKF v0.2 bundle로 관리한다.
 
 충족 요구사항: 요구사항-01..요구사항-55
 
@@ -79,7 +81,7 @@ Strict 인증은 backend가 표시하는 자체 점수를 믿지 않는다. SENT
 
 |공통규칙|설계 위치|적용 방식|
 |---|---|---|
-|공통규칙-01|2.1|SPEC 1개와 실행형 언어 repo 5개|
+|공통규칙-01|2.1|SPEC 1개와 실행형 언어 repo 3개|
 |공통규칙-02|3.1, 7|기존 mutation backend와 최소 bridge, 자체 engine 없음|
 |공통규칙-03|6.4, 7.4|raw CRAP 8.0 이하, 모든 in-scope mutant killed|
 |공통규칙-04|2.2, 5.2|process CLI·JSON·exit code 경계|
@@ -88,7 +90,7 @@ Strict 인증은 backend가 표시하는 자체 점수를 믿지 않는다. SENT
 |공통규칙-07|10.4|Git 작업은 생성될 각 child repo 안에서만 수행|
 |공통규칙-08|10.1, 10.2|production 동작마다 failing test와 negative fixture 선행|
 |공통규칙-09|3.4, 7.6|outer snapshot과 protected inventory digest|
-|공통규칙-10|4.4|6개 repo의 OKF v0.2 bundle|
+|공통규칙-10|4.4|4개 repo의 OKF v0.2 bundle|
 
 ## 2. 아키텍처와 책임 경계
 
@@ -99,9 +101,7 @@ Strict 인증은 backend가 표시하는 자체 점수를 믿지 않는다. SENT
 |`SENTINEL_SPEC`|실행 도구 없음|공통 schema, CLI 의미, 상태, gate, fingerprint, golden fixture|없음|
 |`SENTINEL_PY`|`sentinel-py`|Python native CRAP, 공통 orchestration, evidence·history|mutmut 3.7.0 기반 bridge|
 |`SENTINEL_TS`|`sentinel-ts`|TypeScript·TSX native CRAP, 공통 orchestration, evidence·history|StrykerJS 10.0.0 JSON reporter|
-|`SENTINEL_GO`|`sentinel-go`|Go native CRAP, 공통 orchestration, evidence·history|mutate4go 고정 commit 기반 bridge|
 |`SENTINEL_JAVA`|`sentinel-java`|Java native CRAP, 공통 orchestration, evidence·history|mutate4java 고정 commit 기반 bridge|
-|`SENTINEL_CLJ`|`sentinel-clj`|Clojure native CRAP, 공통 orchestration, evidence·history|clj-mutate 고정 commit 기반 bridge|
 
 각 실행형 저장소는 다른 SENTINEL의 runtime package를 import하지 않는다. 공통 동작을 소스 복사로 맞추지 않고 `SENTINEL_SPEC`의 schema와 golden fixture로 맞춘다. 따라서 한 언어 도구가 설치되지 않아도 다른 언어 도구는 동작한다.
 
@@ -190,7 +190,7 @@ Repository 이름이나 최상위 파일 수로 언어를 추측하지 않는다
 
 Strict는 `production` glob을 독립적인 진실로 믿지 않는다. 먼저 project root 아래 지원 언어 source를 native extension·parser로 전부 발견하고, 각 file이 정확히 한 module production 또는 검증된 test·generated·vendor·build-output 분류에 속하는지 대조한다. 어느 module에도 속하지 않는 `unclassifiedSource`, 둘 이상에 속하는 overlap과 production glob에서 빠진 candidate가 하나라도 있으면 strict를 시작하지 않는다. 따라서 module root나 glob을 줄여 문제 file을 숨긴 결과는 full 인증이 아니다.
 
-현재 SwarmForge의 Robert 도구 catalog는 실제 upstream task 이름과 Go·Java layout이 맞지 않으므로 재사용하지 않는다. 향후 별도 연동 작업에서는 5개 SENTINEL CLI를 module별로 직접 호출한다.
+현재 SwarmForge의 Robert 도구 catalog는 실제 upstream task 이름과 Java layout이 맞지 않으므로 재사용하지 않는다. 향후 별도 연동 작업에서는 3개 SENTINEL CLI를 module별로 직접 호출한다.
 
 충족 요구사항: 요구사항-05, 요구사항-18, 요구사항-32, 요구사항-42, 요구사항-55
 
@@ -202,13 +202,13 @@ Strict는 `production` glob을 독립적인 진실로 믿지 않는다. 먼저 p
 |---|---|---|---|
 |**A. 고정 backend + version별 bridge**|검증된 mutation 생성기를 재사용하고 공통 gate를 통제|backend 변경마다 bridge conformance가 필요|backend의 모든 operator를 자유롭게 고치는 것은 어려움|
 |B. backend CLI를 그대로 실행|구현량이 가장 작음|timeout을 killed로 세거나 불완전 text만 내는 backend를 인증할 수 없음|엄격한 상태·privacy 계약을 증명하기 어려움|
-|C. 5개 자체 mutation 엔진|모든 상태와 operator를 직접 통제|구현·유지·자기 mutation 검증량이 매우 큼|성숙한 backend 개선을 즉시 받지 못함|
+|C. 3개 자체 mutation 엔진|모든 상태와 operator를 직접 통제|구현·유지·자기 mutation 검증량이 매우 큼|성숙한 backend 개선을 즉시 받지 못함|
 
 **채택: A.** Bridge는 generator 경계의 전체 candidate inventory(backend가 만들 수 있다고 실행 전에 열거한 전체 mutant 후보 목록), reporter, 원시 process outcome 보존, deterministic full mode와 source-write 차단만 담당한다. 새 operator를 구현하거나 backend 점수를 대신 계산하지 않는다. 이 경계를 넘는 수정이 필요하면 해당 backend를 교체한다.
 
-Python은 mutmut 3.7.0을 우선 채택한다. Release admission 단계에서 `Mutmut370Bridge`가 mutant별 operator·raw status·완전성을 conformance fixture로 증명하지 못하면 공통 계약을 바꾸지 않고 Cosmic Ray 8.7.0 adapter를 그 release의 유일한 backend로 선택한다. 배포된 실행이 runtime에서 자동 fallback하지 않으며 `backend.lock.json`은 정확히 하나만 고정한다. TypeScript는 per-mutant JSON Schema가 있는 StrykerJS 10.0.0을 채택한다. Go·Java·Clojure는 Robert Martin backend의 고정 commit에 operator를 바꾸지 않는 execution·report bridge patch를 적용한다.
+Python은 mutmut 3.7.0을 우선 채택한다. Release admission 단계에서 `Mutmut370Bridge`가 mutant별 operator·raw status·완전성을 conformance fixture로 증명하지 못하면 공통 계약을 바꾸지 않고 Cosmic Ray 8.7.0 adapter를 그 release의 유일한 backend로 선택한다. 배포된 실행이 runtime에서 자동 fallback하지 않으며 `backend.lock.json`은 정확히 하나만 고정한다. TypeScript는 per-mutant JSON Schema가 있는 StrykerJS 10.0.0을 채택한다. Java는 Robert Martin backend의 고정 commit에 operator를 바꾸지 않는 execution·report bridge patch를 적용한다.
 
-**6개월 뒤 예상:** backend 최신판이 나와도 자동 업그레이드하지 않는다. 새 version bridge가 같은 golden fixture를 통과한 Sentinel release에서만 pin을 올린다. 반복 backend 결함은 history에서 `backend` finding으로 확인한 뒤 patch, 교체, 자체 engine 중 하나를 별도 결정한다.
+**4개월 뒤 예상:** backend 최신판이 나와도 자동 업그레이드하지 않는다. 새 version bridge가 같은 golden fixture를 통과한 Sentinel release에서만 pin을 올린다. 반복 backend 결함은 history에서 `backend` finding으로 확인한 뒤 patch, 교체, 자체 engine 중 하나를 별도 결정한다.
 
 충족 요구사항: 요구사항-03, 요구사항-04, 요구사항-19, 요구사항-20, 요구사항-26, 요구사항-32, 요구사항-39..요구사항-43
 
@@ -216,13 +216,13 @@ Python은 mutmut 3.7.0을 우선 채택한다. Release admission 단계에서 `M
 
 |안|장점|단점|닫히는 옵션|
 |---|---|---|---|
-|**A. 각 언어 native analyzer**|정확한 AST와 coverage format을 사용하고 공통 model로 직접 출력|5개 구현의 semantic drift 위험|한 번의 parser update로 모든 언어를 고치기 어려움|
+|**A. 각 언어 native analyzer**|정확한 AST와 coverage format을 사용하고 공통 model로 직접 출력|3개 구현의 semantic drift 위험|한 번의 parser update로 모든 언어를 고치기 어려움|
 |B. upstream CRAP text wrapper|초기 구현이 빠름|N/A 성공, 누락 callable, human text parsing을 그대로 물려받음|공통 callable inventory를 보장하기 어려움|
 |C. 한 tree-sitter 기반 analyzer|구조가 통일됨|coverage와 언어별 의미 연결이 약하고 별도 runtime이 필요|언어 native toolchain만으로 설치하기 어려움|
 
-**채택: A.** Go·Java·Clojure 구현은 각각 `crap4go`, `crap4java`, `crap4clj`의 고정 commit을 기준 corpus와 출발점으로 사용하되, SENTINEL이 production inventory, callable 누락, N/A 실패와 8.0 gate를 다시 소유한다. Python과 TypeScript는 각 표준 AST·Compiler API로 같은 공식을 구현한다.
+**채택: A.** Java 구현은 `crap4java`의 고정 commit을 기준 corpus와 출발점으로 사용하되 SENTINEL이 production inventory, callable 누락, N/A 실패와 8.0 gate를 소유한다. Python과 TypeScript는 각 표준 AST·Compiler API로 같은 공식을 구현한다.
 
-**6개월 뒤 예상:** 언어 문법 변화는 해당 analyzer만 바꾸되 `SENTINEL_SPEC`의 공통 CRAP golden vector와 언어별 callable corpus가 drift를 잡는다. Coverage 단위는 언어마다 달라질 수 있으므로 각 row에 `coverageBasis`를 남겨 서로 다른 언어의 CRAP 값을 거짓으로 동일 측정처럼 보이지 않게 한다.
+**4개월 뒤 예상:** 언어 문법 변화는 해당 analyzer만 바꾸되 `SENTINEL_SPEC`의 공통 CRAP golden vector와 언어별 callable corpus가 drift를 잡는다. Coverage 단위는 언어마다 달라질 수 있으므로 각 row에 `coverageBasis`를 남겨 서로 다른 언어의 CRAP 값을 거짓으로 동일 측정처럼 보이지 않게 한다.
 
 충족 요구사항: 요구사항-10..요구사항-17, 요구사항-34, 요구사항-36
 
@@ -230,13 +230,13 @@ Python은 mutmut 3.7.0을 우선 채택한다. Release admission 단계에서 `M
 
 |안|장점|단점|닫히는 옵션|
 |---|---|---|---|
-|**A. versioned SPEC bundle을 각 repo에 고정 vendoring**|runtime offline·독립 설치, 정확한 contract 재현|SPEC 변경 시 5개 repo의 lock 갱신 필요|항상 최신 SPEC을 자동 소비하지 않음|
+|**A. versioned SPEC bundle을 각 repo에 고정 vendoring**|runtime offline·독립 설치, 정확한 contract 재현|SPEC 변경 시 3개 repo의 lock 갱신 필요|항상 최신 SPEC을 자동 소비하지 않음|
 |B. 실행 때 private SPEC repo 다운로드|중복이 없음|network·credential 실패가 품질 실행을 막음|완전 offline 실행 불가|
 |C. 각 repo가 schema를 독자 소유|release가 독립적|같은 이름의 계약이 서로 달라짐|단일 진실 공급원을 잃음|
 
 **채택: A.** `SENTINEL_SPEC` release bundle은 schema, golden fixture와 checksum manifest를 포함한다. 실행형 repo는 `spec-lock.json`에 `specVersion`, commit, bundle SHA-256을 고정하고 bundle을 vendor한다. CI는 고정 commit의 원본 bundle과 byte·digest를 비교하지만 runtime은 network를 사용하지 않는다.
 
-**6개월 뒤 예상:** breaking 변경은 SPEC major version을 올리고 이전 major를 최소 한 Sentinel release 동안 병행할 수 있다. 한 언어 update가 늦어도 기존 bundle로 계속 실행되며, 새 major 인증만 받지 못한다.
+**4개월 뒤 예상:** breaking 변경은 SPEC major version을 올리고 이전 major를 최소 한 Sentinel release 동안 병행할 수 있다. 한 언어 update가 늦어도 기존 bundle로 계속 실행되며, 새 major 인증만 받지 못한다.
 
 충족 요구사항: 요구사항-05..요구사항-09, 요구사항-33, 요구사항-38, 요구사항-44
 
@@ -254,7 +254,7 @@ Snapshot 생성기는 trusted project root FD 아래에서 각 protected file을
 
 Backend가 만드는 footer manifest, `mutants/`, `.stryker-tmp`, worker copy와 report는 snapshot 안에만 존재한다. 위 stable capture로 original project protected inventory digest와 별도의 pristine snapshot manifest를 동시에 고정한다. Original digest가 동시 편집을 포함해 달라지면 `run.terminalStatus=toolError`로 끝내며 원본에 복구 write를 하지 않는다. Backend 종료 뒤 snapshot이 pristine manifest로 복원되지 않으면 mutant `toolError`와 전체 `backendError`다.
 
-**6개월 뒤 예상:** 큰 monorepo에서 copy 비용이 문제가 되면 `WorkspaceProvider` 구현만 reflink 또는 copy-on-write로 바꾼다. 원본을 직접 mutate하는 provider는 허용하지 않는다.
+**4개월 뒤 예상:** 큰 monorepo에서 copy 비용이 문제가 되면 `WorkspaceProvider` 구현만 reflink 또는 copy-on-write로 바꾼다. 원본을 직접 mutate하는 provider는 허용하지 않는다.
 
 충족 요구사항: 요구사항-22, 요구사항-24, 요구사항-25, 요구사항-27, 요구사항-28, 요구사항-29, 요구사항-31
 
@@ -263,12 +263,12 @@ Backend가 만드는 footer manifest, `mutants/`, `.stryker-tmp`, worker copy와
 |안|장점|단점|닫히는 옵션|
 |---|---|---|---|
 |**A. 실행별 불변 JSON file bundle**|모든 언어에서 추가 library 없이 구현, crash 흔적과 retention 경계가 명확|실행이 매우 많으면 directory scan 비용|즉시 복잡한 query는 느림|
-|B. project-local SQLite|transaction·query가 강함|5개 언어 driver·schema migration이 필요|단순 artifact 복사와 사람 검사가 어려움|
+|B. project-local SQLite|transaction·query가 강함|3개 언어 driver·schema migration이 필요|단순 artifact 복사와 사람 검사가 어려움|
 |C. 중앙 service|cross-project 조회가 쉬움|network, 인증, 운영, source 유출 경계가 생김|v1 offline·project 소유 원칙을 잃음|
 
 **채택: A.** `started.json`, event files와 마지막 `evidence.json`을 한 run directory에 둔다. 유효한 event manifest를 가진 `evidence.json`이 commit marker다. 중간 crash는 started만 남아 `incomplete`로 보인다. `history`는 retained bundle과 명시적 retention marker를 읽어 현재 상태를 계산하고 derived DB를 진실 공급원으로 만들지 않는다.
 
-**6개월 뒤 예상:** 수만 run에서 조회가 느려지면 불변 bundle에서 재생성 가능한 local index를 추가한다. 중앙 집계는 별도 `SENTINEL_HUB` 제품 결정 전에는 만들지 않는다.
+**4개월 뒤 예상:** 수만 run에서 조회가 느려지면 불변 bundle에서 재생성 가능한 local index를 추가한다. 중앙 집계는 별도 `SENTINEL_HUB` 제품 결정 전에는 만들지 않는다.
 
 충족 요구사항: 요구사항-45..요구사항-51, 요구사항-54
 
@@ -276,7 +276,7 @@ Backend가 만드는 footer manifest, `mutants/`, `.stryker-tmp`, worker copy와
 
 |안|장점|단점|닫히는 옵션|
 |---|---|---|---|
-|**A. 소비 repo별 SPEC read-only deploy key**|유출 범위가 SPEC read로 제한되고 key별 폐기 가능|5개 key 관리 필요|하나의 credential로 모든 repo를 관리하지 못함|
+|**A. 소비 repo별 SPEC read-only deploy key**|유출 범위가 SPEC read로 제한되고 key별 폐기 가능|3개 key 관리 필요|하나의 credential로 모든 repo를 관리하지 못함|
 |B. shared fine-grained PAT|설정이 간단|한 secret 유출이 모든 허용 repo에 영향|repo별 독립 폐기가 어려움|
 |C. GitHub App|장기 권한·rotation이 우수|App 생성과 token 발급 workflow가 추가됨|가장 단순한 bootstrap은 아님|
 
@@ -355,11 +355,9 @@ Orchestrator는 위 module을 연결만 한다. Backend-specific 조건을 CLI, 
 |---|---|---|---|
 |`SENTINEL_PY`|`src/sentinel_py/`|`tests/`|Python `ast`, coverage.py JSON|
 |`SENTINEL_TS`|`src/`|`test/`|TypeScript Compiler API, LCOV|
-|`SENTINEL_GO`|`cmd/sentinel-go/`, `internal/`|각 package `_test.go`|`go/ast`, Go coverprofile|
 |`SENTINEL_JAVA`|`src/main/java/`|`src/test/java/`|JDK compiler tree API, JaCoCo XML|
-|`SENTINEL_CLJ`|`src/`|`test/` 또는 `spec/`|Clojure reader, Cloverage form·LCOV|
 
-Go·Java·Clojure repo에는 `upstream/UPSTREAM.md`, backend lock과 execution·report boundary에 한정된 patch series를 둔다. 기존 `upstream/unclebob` clone에 commit하거나 remote를 바꾸지 않는다. Python·TypeScript도 backend version과 bridge digest를 `backend.lock.json`으로 기록한다.
+Java repo에는 `upstream/UPSTREAM.md`, backend lock과 execution·report boundary에 한정된 patch series를 둔다. 기존 `upstream/unclebob` clone에 commit하거나 remote를 바꾸지 않는다. Python·TypeScript도 backend version과 bridge digest를 `backend.lock.json`으로 기록한다.
 
 충족 요구사항: 요구사항-01, 요구사항-02, 요구사항-12, 요구사항-13, 요구사항-36, 요구사항-39..요구사항-43
 
@@ -385,7 +383,7 @@ Strict preflight는 backend가 mutation을 줄일 수 있는 모든 channel을 �
 
 모든 writable path에는 공통 `SafePathPolicy`를 적용한다. Coverage report는 module 아래의 선언된 generated-output root에 있고 protected source·test·config와 겹치지 않을 때만 이전 regular file을 교체할 수 있다. `--output`, `--raw-dir`, export와 temporary path는 canonical parent 아래에 exclusive create하며 기존 path, symlink, hardlink와 path 경계 밖 alias를 거부한다. 특히 non-existing export target의 마지막 게시도 validated parent descriptor에서 `renameat2(RENAME_NOREPLACE)` 또는 동등한 kernel no-replace primitive로 수행한다. 사전 존재 확인 뒤 공격자가 target을 만드는 race에서는 공격자 byte를 덮어쓰지 않고 export만 실패한다.
 
-V1 Linux 구현은 검사 뒤 문자열 path를 다시 여는 방식으로 작업하지 않는다. Trusted root directory FD에서 `openat2`의 beneath·no-symlink·no-magic-link 제약 또는 같은 의미의 component-by-component `openat(O_NOFOLLOW)`를 사용하고, `fstat`한 device·inode·link count를 유지한 채 `renameat2`·`unlinkat` 같은 descriptor-relative operation을 실행한다. TypeScript는 artifact가 고정된 Koffi, Java와 Clojure는 JAR와 packaged Linux native dispatch artifact가 고정된 JNA로 이 libc boundary를 호출한다. First-party C·C++·JNI source는 만들지 않는다. Prune도 열린 run directory FD 아래 descendant만 순회한다. Kernel·filesystem이 이 TOCTOU 방지 의미를 제공하지 않으면 write·delete를 하지 않고 dependency error로 끝낸다.
+V1 Linux 구현은 검사 뒤 문자열 path를 다시 여는 방식으로 작업하지 않는다. Trusted root directory FD에서 `openat2`의 beneath·no-symlink·no-magic-link 제약 또는 같은 의미의 component-by-component `openat(O_NOFOLLOW)`를 사용하고, `fstat`한 device·inode·link count를 유지한 채 `renameat2`·`unlinkat` 같은 descriptor-relative operation을 실행한다. TypeScript는 artifact가 고정된 Koffi, Java는 JAR와 packaged Linux native dispatch artifact가 고정된 JNA로 이 libc boundary를 호출한다. First-party C·C++·JNI source는 만들지 않는다. Prune도 열린 run directory FD 아래 descendant만 순회한다. Kernel·filesystem이 이 TOCTOU 방지 의미를 제공하지 않으면 write·delete를 하지 않고 dependency error로 끝낸다.
 
 충족 요구사항: 요구사항-18..요구사항-20, 요구사항-23, 요구사항-28..요구사항-32, 요구사항-52, 요구사항-55
 
@@ -393,7 +391,7 @@ V1 Linux 구현은 검사 뒤 문자열 path를 다시 여는 방식으로 작�
 
 각 실행 파일 이름만 다르고 subcommand 의미는 같다.
 
-아래 명령 형식에서 `<lang>`은 `py`, `ts`, `go`, `java`, `clj` 중 해당 언어 이름으로 바꿀 자리다. `[항목]`은 생략할 수 있는 option, `A|B`는 A와 B 중 하나를 고르는 표시다. `PATH`는 파일·directory 위치, `ID`는 module 식별자, `UUID`는 실행을 구별하는 고유 값, `DATE`는 날짜를 뜻한다.
+아래 명령 형식에서 `<lang>`은 `py`, `ts`, `java` 중 해당 언어 이름으로 바꿀 자리다. `[항목]`은 생략할 수 있는 option, `A|B`는 A와 B 중 하나를 고르는 표시다. `PATH`는 파일·directory 위치, `ID`는 module 식별자, `UUID`는 실행을 구별하는 고유 값, `DATE`는 날짜를 뜻한다.
 
 ```text
 sentinel-<lang> crap       [--project PATH] [--config PATH] [--module ID] [--strict|--local]
@@ -485,7 +483,7 @@ CRAP = [CC² × (T - C)³ + CC × T³] / T³
 
 Gate는 integer끼리 `crapNumerator <= 8 × crapDenominator`를 비교하므로 8.0 초과에 허용 오차를 주지 않는다. CRAP, coverage와 kill rate의 모든 nonnegative exact fraction은 arbitrary-precision integer로 계산한 뒤 `gcd(numerator, denominator)`로 나눈 기약분수로 저장한다. Denominator는 항상 양수이고 0은 오직 `0/1`이다. JSON wire의 numerator·denominator는 각각 leading zero 없는 unsigned decimal string이다. `cyclomaticComplexity`, coverage unit, callable·mutant·상태·inventory count처럼 JSON number로 보내는 정수는 safe integer `0..9007199254740991`로 제한하고 CC만 1 이상이다. 범위를 넘으면 반올림하지 않고 contract error다.
 
-`coverageFraction`, `crapRaw`와 kill-rate percentage의 canonical decimal은 binary float나 runtime decimal formatter를 쓰지 않는다. Nonnegative fraction `n/d`를 표시할 때 integer로 `scaled=n×10^12`, `q=floor(scaled/d)`, `r=scaled mod d`를 계산하고 `2r>d`이거나 `2r=d`이면서 `q`가 홀수일 때만 `q`를 1 올리는 round-half-to-even을 적용한다. `q`를 소수점 아래 12자리로 나눈 뒤 fractional trailing zero를 모두 제거하고 fractional part가 비면 정수만 쓴다. 0은 `0`이고 exponent, leading plus, leading zero와 음수 0은 금지한다. Grammar는 `^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$`다. Text와 JSON은 이 exact renderer output을 그대로 사용하며 추가 locale·percentage formatter나 재반올림은 없다. Kill-rate percentage만 renderer 입력 numerator에 100을 먼저 곱한다. SPEC golden은 `17/4 -> 4.25`, `1/3 -> 0.333333333333`, half-even tie, carry, 0, integer, `2^53` 경계와 큰 fraction을 포함해 5개 언어의 fraction과 decimal byte를 고정한다. 유효한 report의 `totalUnits=0`은 `coverageUnknown`이지만 report 내부 count 불일치는 위 분류대로 `dependencyError`다.
+`coverageFraction`, `crapRaw`와 kill-rate percentage의 canonical decimal은 binary float나 runtime decimal formatter를 쓰지 않는다. Nonnegative fraction `n/d`를 표시할 때 integer로 `scaled=n×10^12`, `q=floor(scaled/d)`, `r=scaled mod d`를 계산하고 `2r>d`이거나 `2r=d`이면서 `q`가 홀수일 때만 `q`를 1 올리는 round-half-to-even을 적용한다. `q`를 소수점 아래 12자리로 나눈 뒤 fractional trailing zero를 모두 제거하고 fractional part가 비면 정수만 쓴다. 0은 `0`이고 exponent, leading plus, leading zero와 음수 0은 금지한다. Grammar는 `^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$`다. Text와 JSON은 이 exact renderer output을 그대로 사용하며 추가 locale·percentage formatter나 재반올림은 없다. Kill-rate percentage만 renderer 입력 numerator에 100을 먼저 곱한다. SPEC golden은 `17/4 -> 4.25`, `1/3 -> 0.333333333333`, half-even tie, carry, 0, integer, `2^53` 경계와 큰 fraction을 포함해 3개 언어의 fraction과 decimal byte를 고정한다. 유효한 report의 `totalUnits=0`은 `coverageUnknown`이지만 report 내부 count 불일치는 위 분류대로 `dependencyError`다.
 
 충족 요구사항: 요구사항-06, 요구사항-07, 요구사항-10, 요구사항-11, 요구사항-16
 
@@ -495,17 +493,13 @@ Gate는 integer끼리 `crapNumerator <= 8 × crapDenominator`를 비교하므로
 |---|---|---|---|
 |Python|function, async function, method, nested function, lambda|branch, loop, handler, boolean decision과 comprehension filter|실행 가능한 line|
 |TypeScript·TSX|function, method, getter, setter, constructor, function expression, arrow, callback|branch, loop, catch, conditional, logical decision, switch case|Istanbul function·statement source range|
-|Go|function, method, function literal|`if`, loop, case, communication clause, `&&`, `||`|coverprofile statement count|
 |Java|method, constructor, lambda|branch, loop, catch, ternary, case, `&&`, `||`|JaCoCo method·instruction counter와 classfile descriptor·line table|
-|Clojure|`defn`, `defn-`, method implementation, `fn` form|`if` 계열, `when` 계열, `and`, `or`, loop, catch와 multi-clause form|Config가 고정한 Cloverage form 또는 LCOV line|
 
 AST source range로 callable nesting tree를 만든다. Decision point와 coverage executable unit은 그 range를 포함하는 가장 안쪽 callable 하나에만 배정하고 child range의 unit는 parent 분자·분모에서 제외한다. 같은 이름 재정의와 익명 callable은 line number나 sibling ordinal이 아니라 8.4의 versioned semantic site descriptor로 구분한다. Descriptor가 중복되어 한 node로 확정되지 않으면 임의 번호를 붙이지 않고 `identityAmbiguous`로 실패한다. 지원 parser가 syntax를 해석하지 못하면 해당 파일을 건너뛰지 않고 analysis error로 실패한다.
 
-Line coverage 하나가 같은 줄의 Python lambda·nested function, TypeScript arrow·TSX callback 또는 Clojure `fn` 둘 이상에 걸쳐 독립 실행 여부를 증명하지 못하면 임의 분배하지 않고 관련 callable을 `coverageUnknown`으로 만든다. TypeScript strict CRAP은 Istanbul `fnMap`·`statementMap`처럼 source range를 가진 report를 사용한다. LCOV는 function extension과 source range가 같은 독립성을 증명하는 adapter에서만 허용한다. Java lambda도 classfile descriptor·line table로 synthetic method 연결을 증명하지 못하면 같은 방식으로 실패한다.
+Line coverage 하나가 같은 줄의 Python lambda·nested function, TypeScript arrow·TSX callback 둘 이상에 걸쳐 독립 실행 여부를 증명하지 못하면 임의 분배하지 않고 관련 callable을 `coverageUnknown`으로 만든다. TypeScript strict CRAP은 Istanbul `fnMap`·`statementMap`처럼 source range를 가진 report를 사용한다. LCOV는 function extension과 source range가 같은 독립성을 증명하는 adapter에서만 허용한다. Java lambda도 classfile descriptor·line table로 synthetic method 연결을 증명하지 못하면 같은 방식으로 실패한다.
 
-Go·Java·Clojure upstream의 현재 누락 범위도 그대로 성공으로 물려받지 않는다. 예를 들어 Go function literal, Java constructor·lambda, Clojure anonymous `fn`이 production inventory에 있으면 독립 callable 또는 명시된 enclosing 규칙으로 처리하고 golden fixture로 고정한다.
-
-Clojure analyzer는 `*read-eval*=false`에서 실행하고 project `data_readers.clj`와 임의 tagged-literal function을 load하지 않는다. SPEC allowlist 밖 tag와 reader conditional을 안전하게 해석할 수 없으면 analysis error다. Namespace `require`, macro expansion, `eval`과 source load 없이 tools.reader form만 분석하며 어떤 분석 입력도 project code를 실행하게 하지 않는다.
+Java upstream의 현재 누락 범위도 그대로 성공으로 물려받지 않는다. Java constructor·lambda가 production inventory에 있으면 독립 callable 또는 명시된 enclosing 규칙으로 처리하고 golden fixture로 고정한다.
 
 충족 요구사항: 요구사항-10, 요구사항-12, 요구사항-13, 요구사항-15, 요구사항-17, 요구사항-34
 
@@ -520,7 +514,7 @@ Fresh CRAP은 다음 순서로 실행한다.
 5. Canonical module-relative path와 callable range로 coverage를 연결한다.
 6. 실행 가능한 unit가 0개이거나 연결이 모호하면 `coverageUnknown`으로 실패한다.
 
-언어별 원본 형식은 coverage.py JSON, Istanbul JSON, Go coverprofile, JaCoCo XML과 classfile metadata, Cloverage form·LCOV다. Clojure는 module config가 `form` 또는 `line` 중 하나를 고정하며 한 run 안에서 fallback으로 basis를 바꾸지 않는다. 서로 다른 언어의 basis를 억지로 line으로 환산하지 않고 row와 evidence에 basis를 기록한다. Existing report를 쓰는 local mode는 report provenance가 현재 source·test·config digest와 정확히 맞을 때만 허용하며 strict에서는 항상 fresh command를 실행한다.
+언어별 원본 형식은 coverage.py JSON, Istanbul JSON, JaCoCo XML과 classfile metadata다. 서로 다른 언어의 basis를 억지로 line으로 환산하지 않고 row와 evidence에 basis를 기록한다. Existing report를 쓰는 local mode는 report provenance가 현재 source·test·config digest와 정확히 맞을 때만 허용하며 strict에서는 항상 fresh command를 실행한다.
 
 충족 요구사항: 요구사항-10, 요구사항-14, 요구사항-15, 요구사항-28, 요구사항-32
 
@@ -546,11 +540,9 @@ Report는 `coverageUnknown 우선 -> known CRAP exact 내림차순 -> moduleRela
 |---|---|---|---|
 |Python|mutmut|3.7.0, wheel SHA-256 `1d2f9a1bfa4a474b2213df6b17223150b492bf4a85af0eda4fb322297337fb32`|`Mutmut370Bridge`, Python 3.10 이상, `fork` 지원 OS|
 |TypeScript·TSX|`@stryker-mutator/core`|10.0.0, npm integrity `sha512-ZvMsRyaXQQ5e6Thcid9pkuODv6Fn9E3nrBQJUap+hcJuGJ4unm26afo3m6YKSjn8kinyxJ/3TXf0cTWRDaTxVw==`|공식 plan event reporter와 최종 JSON reporter, 모든 Stryker package 10.0.0, Node 22 이상|
-|Go|mutate4go|`9016c7adafc1c7e282b5e27768e732e477713af8`|machine-report·typed runner·argv process·raw timeout bridge patch|
 |Java|mutate4java|`7b05fdd71e8fe36327aff837806dfbff86af0572`|standalone build·machine-report·typed runner·argv process·raw outcome bridge patch, Java 17 이상|
-|Clojure|clj-mutate|`e27dd5df63c4efdd66438587d1c5f49e73661b69`|machine-report·typed runner·argv process·raw timeout·coverage failure bridge patch, Clojure 1.12 기준|
 
-CRAP reference 기준점은 `crap4go` `bee16dbdadb4af927a7792083f3cba2ae58841ed`, `crap4java` `69b561209f130ece728f19b0001e90df5a117c3a`, `crap4clj` `e068673a852a8142323ac680fa3366de65bc2227`이다. SwarmForge 비교 기준점은 `95e95e4a2fecace23078aac40e33158ce9040f21`이며 수정하지 않는다.
+CRAP reference 기준점은 `crap4java` `69b561209f130ece728f19b0001e90df5a117c3a`다. SwarmForge 비교 기준점은 `95e95e4a2fecace23078aac40e33158ce9040f21`이며 수정하지 않는다.
 
 mutmut의 공식 aggregate JSON은 mutant별 operator와 모든 상태를 제공하지 않고, Stryker JSON은 mutant별 상태를 제공하지만 source 원문을 포함한다. 따라서 Python bridge는 고정 version의 raw metadata와 process outcome을 기계 report로 내보낸다. TypeScript adapter는 Stryker의 공식 `onMutationTestingPlanReady` event에서 전체 `mutantPlans`를 실행 전에 고정하고, 최종 JSON을 읽은 직후 source·replacement field를 폐기한다.
 
@@ -580,21 +572,17 @@ killConfirmationPolicy, isolationMode
 
 `doctor`는 실제 binary·wheel·npm package·JAR의 identity와 위 lock을 비교한다. Version string만 맞고 artifact digest가 다르거나 bridge patch가 다른 경우 dependency error다. Runtime 실행은 `latest`를 설치하거나 compatibility를 추측하지 않는다.
 
-Module은 pytest, Jest·Vitest, `go test`, JUnit, `clojure.test`처럼 SPEC compatibility table에 있는 `testRunnerAdapter`와 exact reporter version을 선택한다. Adapter는 test ID set과 assertion failure·test error·panic을 구조화해야 한다. 지원하지 않는 custom command나 reporter는 단순 process exit로 추측하지 않고 strict preflight의 dependency error다.
-
-Go의 공식 `go test -json` event만으로는 `testing.T` failure와 panic을 typed field로 구분할 수 없으므로 stdout 문구를 보완 parsing하지 않는다. `SENTINEL_GO` admission spike는 snapshot의 test AST에만 wrapper를 넣어 selected `Test*(*testing.T)`, runnable `Example*`, `Fuzz*` seed execution과 `TestMain`의 setup·`m.Run()`·teardown lifecycle을 length-prefixed private event pipe로 보고하는 protocol을 구현한다. Structured collection의 모든 selected test ID와 `TestMain` lifecycle은 typed start·terminal event와 one-to-one으로 대응해야 한다. `Test*`와 fuzz seed는 private `testing.T`·`testing.F` fail state를 assertion으로 사용한다. Runnable Example은 같은 ID의 private normal-return terminal, official JSON test-level `fail`, `TestMain`의 정상 `m.Run()` return과 panic·process-abort event 0개가 모두 있을 때만 output mismatch assertion으로 인정한다. 이 조합이 불완전하면 assertion으로 추측하지 않고 `runtimeError`다. Wrapper가 담당할 수 없는 test kind·signature·mode가 하나라도 수집되면 mutant 실행 전에 strict preflight를 `dependencyError`로 끝낸다. Benchmark와 unknown mode도 SPEC adapter version이 명시적으로 지원하기 전에는 거부한다. Original test source는 바꾸지 않고, compile failure는 `compileError`, assertion API로 표시된 failure는 assertion, panic·`os.Exit`·terminal event 누락은 `runtimeError`로 분리한다. `FailNow`의 `runtime.Goexit`, subtest와 child goroutine 반례까지 conformance를 통과하지 못하면 `SENTINEL_GO` strict release를 차단하며 일반 nonzero exit나 human output fallback을 허용하지 않는다.
+Module은 pytest, Jest·Vitest, JUnit처럼 SPEC compatibility table에 있는 `testRunnerAdapter`와 exact reporter version을 선택한다. Adapter는 test ID set과 assertion failure·test error·panic을 구조화해야 한다. 지원하지 않는 custom command나 reporter는 단순 process exit로 추측하지 않고 strict preflight의 dependency error다.
 
 |언어|승인할 structured boundary|Assertion으로 인정|그 밖의 failure|
 |---|---|---|---|
 |Python|고정 pytest plugin의 runtest protocol event|typed `AssertionError` failure|collection·internal·non-assertion exception은 compile·runtime·tool 상태|
 |TypeScript·TSX|고정 Jest Circus 또는 Vitest adapter의 typed task event|승인된 assertion error type|unhandled rejection·worker·runner error는 runtime·tool 상태|
-|Go|snapshot-only AST wrapper, official JSON test event와 private event pipe|`testing.T`·`testing.F` fail state, 또는 Example의 private normal return + 같은 ID의 official fail + 정상 `m.Run()` return|panic·process abort·terminal event 누락·Example event 조합 불완전은 runtime 상태|
 |Java|JUnit Platform `TestExecutionListener` result와 throwable type|JUnit·OpenTest4J assertion type|discovery·engine·non-assertion throwable은 runtime·tool 상태|
-|Clojure|고정 `clojure.test/report` event adapter|`:fail`|`:error`, runner exception은 runtime·tool 상태|
 
 각 boundary는 framework 지원 version과 reporter artifact digest를 고정하고 assertion·panic·runner crash negative fixture를 통과한 조합만 admission한다.
 
-Baseline, original control과 mutant replay마다 새 execution nonce를 만들고 모든 structured start·terminal event가 그 nonce와 선택된 test ID set을 완전하게 가져야 한다. Runner result cache, last-failed selection, retry plugin과 task up-to-date skip은 strict에서 끈다. Go는 `-count=1`을 강제하고 cached event 0을 확인하며, Java build task는 test rerun을 강제한다. Python·TypeScript·Clojure adapter도 framework별 fresh marker를 증명한다. 이전 stdout이나 cached JSON에 현재 nonce가 없으면 baseline pass나 killed 근거로 사용할 수 없다.
+Baseline, original control과 mutant replay마다 새 execution nonce를 만들고 모든 structured start·terminal event가 그 nonce와 선택된 test ID set을 완전하게 가져야 한다. Runner result cache, last-failed selection, retry plugin과 task up-to-date skip은 strict에서 끈다. Java build task는 test rerun을 강제한다. Python·TypeScript adapter도 framework별 fresh marker를 증명한다. 이전 stdout이나 cached JSON에 현재 nonce가 없으면 baseline pass나 killed 근거로 사용할 수 없다.
 
 Bridge patch가 할 수 있는 일은 다음 다섯 가지뿐이다. 여기서 최소 patch는 line 수가 작다는 뜻이 아니라 mutation operator 의미를 건드리지 않고 report·execution boundary만 바꾼다는 뜻이다.
 
@@ -616,7 +604,7 @@ Bridge patch가 할 수 있는 일은 다음 다섯 가지뿐이다. 여기서 �
 4. Snapshot 안에서 선언된 prepare command를 실행하고 backend·structured test reporter artifact, SPEC·operator lock을 다시 확인한다. Native source discovery를 다시 실행해 선언된 generated output 외 production·unclassified source가 새로 생기지 않았는지도 검증한다. 이 검사는 `started.json` 뒤이므로 새 production·unclassified source, pre/post inventory mismatch는 `usageConfigError`가 아니라 terminal evidence를 남기는 `toolError`와 exit 1이다. Candidate·mutant 실행은 0이다.
 5. 같은 test selection을 structured reporter로 두 번 fresh 실행한다. 두 baseline 모두 같은 test ID set으로 통과하고 static test classification과 collection이 일치해야 하며 실패·누락·inventory 불일치는 `baselineFailed`다. 이때 mutant는 하나도 실행하지 않는다.
 6. 같은 test selection으로 fresh mutation coverage를 만들고 backend full mode를 사용한다. Incremental·manifest·ignore·in-place option은 강제로 끈다.
-7. Bridge의 generator 경계에서 전체 candidate inventory를 먼저 고정한다. TypeScript는 공식 `onMutationTestingPlanReady`가 전달한 전체 `mutantPlans`를 첫 `onMutantTested` event 전에 canonical inventory로 commit한다. Plan event 누락·중복·지연, plan 안 중복 ID 또는 final JSON ID set과의 불일치는 `backendError`다. 최종 JSON 하나를 candidate inventory와 outcome 양쪽의 독립 근거로 재사용하지 않는다. 단일 파일 backend인 Go·Java·Clojure는 SENTINEL이 production file을 전부 열거해 같은 run에 합산한다. Fresh discovery 결과의 재사용은 같은 snapshot·test·config·backend digest 안에서만 허용한다.
+7. Bridge의 generator 경계에서 전체 candidate inventory를 먼저 고정한다. TypeScript는 공식 `onMutationTestingPlanReady`가 전달한 전체 `mutantPlans`를 첫 `onMutantTested` event 전에 canonical inventory로 commit한다. Plan event 누락·중복·지연, plan 안 중복 ID 또는 final JSON ID set과의 불일치는 `backendError`다. 최종 JSON 하나를 candidate inventory와 outcome 양쪽의 독립 근거로 재사용하지 않는다. 단일 파일 backend인 Java는 SENTINEL이 production file을 전부 열거해 같은 run에 합산한다. Fresh discovery 결과의 재사용은 같은 snapshot·test·config·backend digest 안에서만 허용한다.
 8. 승인된 `coverageMatcherVersion`으로 모든 candidate source range를 fresh executable coverage unit에 연결한다. 실행 count 0은 `uncovered`, mapping 누락·모호함은 `backendError`다. Backend raw coverage와 이 판정이 충돌해도 추측하지 않고 `backendError`로 끝낸다.
 9. Covered candidate를 빠짐없이 실행하고 bridge report의 mutant별 raw outcome을 공통 상태로 변환한다. `killed` 후보는 framework reporter가 assertion failure를 구조화해 증명해야 한다. 바로 원본 control이 통과하고 같은 mutant replay가 같은 HMAC test-failure signature로 다시 assertion failure일 때만 최종 `killed`다. Control 실패는 `baselineFailed`, replay 불일치는 mutant `toolError`와 전체 `backendError`다.
 10. Raw report와 framework output은 memory 또는 disposable snapshot에만 둔다. Human stdout 문구나 단순 nonzero exit를 assertion kill 근거로 쓰지 않는다.
@@ -703,13 +691,13 @@ Production은 숫자 PID·PGID를 `kill`·`killpg`·`tgkill`에 전달하지 않
 
 Orphan age policy는 세 방향을 비교했다. 1시간 단일 기준은 저장공간 회수는 빠르지만 clock·재부팅 오판 여유가 작다. Cross-boot 자동 정리를 전혀 하지 않으면 가장 보수적이지만 power loss 잔재가 영구 누적될 수 있다. 채택한 `sandbox-orphan-age-v1`은 valid tree-drained marker가 있는 경우에만 same boot monotonic 24시간, boot mismatch synchronized UTC 7일을 각각 엄격히 초과해야 cleanup을 허용한다. Equality는 보존한다. Marker가 없으면 cross-boot에서도 영구 no-touch다. Same boot에서는 UTC를 deadline에 쓰지 않고, boot mismatch의 UTC rollback·동기화 불명은 unknown으로 no-touch한다. `/proc` diagnostic은 last-`)` parsing으로 exact `Z`·`X`를 dead·no-signal, 다른 exact identity를 live, unreadable·malformed·경합을 unknown으로 분류하지만 known inventory의 all-dead만으로 quarantine하지 않는다.
 
-Same-boot age의 공통 clock은 Linux `clock_gettime(CLOCK_BOOTTIME)` nanoseconds다. Lease는 clock ID `linux-clock-boottime-v1`과 unsigned 64-bit nanoseconds를 leading zero 없는 decimal string으로 저장한다. PID·process-group ID는 `1..2147483647`, device·inode·PID namespace inode·process start tick·lease generation은 `1..18446744073709551615`, boottime만 `0..18446744073709551615`다. Zero나 범위 밖 identity는 signal·delete에 쓰지 않는다. Java `System.nanoTime()`, Go의 process-local monotonic component, Node·Python process-local clock origin과 JSON number는 cross-runtime 판단에 쓰지 않는다. 현재 값이 creation 값보다 작거나 syscall을 사용할 수 없으면 unknown으로 no-touch한다.
+Same-boot age의 공통 clock은 Linux `clock_gettime(CLOCK_BOOTTIME)` nanoseconds다. Lease는 clock ID `linux-clock-boottime-v1`과 unsigned 64-bit nanoseconds를 leading zero 없는 decimal string으로 저장한다. PID·process-group ID는 `1..2147483647`, device·inode·PID namespace inode·process start tick·lease generation은 `1..18446744073709551615`, boottime만 `0..18446744073709551615`다. Zero나 범위 밖 identity는 signal·delete에 쓰지 않는다. Java `System.nanoTime()`, Node·Python process-local clock origin과 JSON number는 cross-runtime 판단에 쓰지 않는다. 현재 값이 creation 값보다 작거나 syscall을 사용할 수 없으면 unknown으로 no-touch한다.
 
 Cross-boot UTC age는 creation과 current sample 양쪽이 `linux-adjtimex-synchronized-v1` proof를 가질 때만 쓴다. 세 대안을 비교한다. Status bit만 확인하면 단순하지만 호출 사이 clock step을 놓친다. Cross-boot 자동 정리를 끄면 가장 안전하지만 reboot 잔재가 계속 쌓인다. 채택안은 synchronized status, maximum error와 monotonic bracket을 함께 증명하는 방식이다. Clock의 `sampleUtcWithSyncProof` 한 호출은 `CLOCK_MONOTONIC_RAW before -> zero-filled modes=0 adjtimex before -> CLOCK_REALTIME sample -> 새 zero-filled modes=0 adjtimex after -> CLOCK_MONOTONIC_RAW after` 순서로 수행한다. 두 adjtimex return이 `-1`과 `TIME_ERROR(5)`가 아니고 두 status에 `STA_UNSYNC(0x0040)`·`STA_CLOCKERR(0x1000)`가 없어야 한다. `STA_NANO(0x2000)`가 있으면 `time.tv_usec`를 nanoseconds, 없으면 microseconds로 exact integer nanoseconds에 정규화하고 각 범위·signed overflow를 검사한다. Before UTC <= sample UTC <= after UTC, raw monotonic span은 0..1,000,000,000ns, realtime span은 0 이상이며 `realtimeSpan <= rawSpan + max(before.maxerror, after.maxerror)*1000 + 1,000,000ns`여야 한다. 위 1ms는 허용한 bracket 측정 오차이며 반환 uncertainty에 다시 더한다. 반환 값은 sample UTC, `uncertaintyNanos=maxErrorNanos+rawSpan+1,000,000`, proof를 한 immutable result로 묶는다. Creation lease도 uncertainty를 저장한다. Cross-boot age-expired는 `currentSampleUtc-currentUncertainty - (createdAtUtc+createdUncertainty) > 604800s`일 때만 true다. Equality, arithmetic overflow, unavailable·error·unsynchronized, invalid subsecond·maxerror, bracket 위반, creation proof·uncertainty 누락과 UTC rollback은 unknown으로 no-touch한다. Separate UTC read와 나중 sync flag를 조합하지 않는다.
 
-Backend 실행 전에는 `sandbox-start-gate-v1`을 사용한다. Guardian이 `pipe2(O_CLOEXEC)`로 만든 read end는 `posix_spawn dup2` 또는 동등한 explicit pass-fd로 gate wrapper의 지정 descriptor에만 전달하고 그 복제본에서만 close-on-exec를 해제한다. Wrapper는 sandbox 접근과 backend load 전에 최대 60초 동안 정확히 `0x47` 한 byte 뒤 EOF를 확인하고 gate FD를 닫은 다음 backend를 `exec`한다. Guardian write end를 포함한 다른 copy는 wrapper에 상속하지 않는다. EOF-only, wrong·extra byte, timeout, read error와 다른 process로 writer가 leak되어 EOF가 오지 않는 경우에는 backend·sandbox 접근 없이 종료한다. Controller가 guardian·wrapper identity를 포함한 lease file과 directory를 durable sync해 ACK한 뒤에만 guardian이 `0x47`을 쓰고 write end를 닫는다. ACK 전 controller crash는 guardian이 command socket EOF를 보고 GO 없이 wrapper를 reap한다.
+Backend 실행 전에는 `sandbox-start-gate-v1`을 사용한다. Guardian이 `pipe2(O_CLOEXEC)`로 만든 read end는 `posix_spawn dup2` 또는 동등한 explicit pass-fd로 gate wrapper의 지정 descriptor에만 전달하고 그 복제본에서만 close-on-exec를 해제한다. Wrapper는 sandbox 접근과 backend load 전에 최대 60초 동안 정확히 `0x47` 한 byte 뒤 EOF를 확인하고 gate FD를 닫은 다음 backend를 `exec`한다. Guardian write end를 포함한 다른 copy는 wrapper에 상속하지 않는다. EOF-only, wrong·extra byte, timeout, read error와 다른 process로 writer가 leak되어 EOF가 오지 않는 경우에는 backend·sandbox 접근 없이 종료한다. Controller가 guardian·wrapper identity를 포함한 lease file과 directory를 durable sync해 ACK한 뒤에만 guardian이 `0x47`을 쓰고 write end를 닫는다. ACK 전 controller crash는 guardian이 command socket EOF를 보고 실행 허가 신호 없이 wrapper를 reap한다.
 
-`mayQuarantineSandbox`와 `mayPruneIncompleteRun`은 같은 lease parser·HMAC·tree-drained marker oracle을 쓰지만 삭제 조건은 분리한다. Sandbox quarantine은 valid marker와 위 age 만료를 모두 요구한다. Incomplete run prune은 valid marker, `startedAtUtc < cutoffUtc`, completed evidence 부재를 요구하고 sandbox age에는 의존하지 않는다. Marker 부재·HMAC mismatch·guardian identity mismatch는 둘 다 unknown·no-delete다. 5개 producer와 5개 consumer의 25조합이 같은 lease와 marker byte를 읽어 두 결론을 동일하게 내야 한다.
+`mayQuarantineSandbox`와 `mayPruneIncompleteRun`은 같은 lease parser·HMAC·tree-drained marker oracle을 쓰지만 삭제 조건은 분리한다. Sandbox quarantine은 valid marker와 위 age 만료를 모두 요구한다. Incomplete run prune은 valid marker, `startedAtUtc < cutoffUtc`, completed evidence 부재를 요구하고 sandbox age에는 의존하지 않는다. Marker 부재·HMAC mismatch·guardian identity mismatch는 둘 다 unknown·no-delete다. 3개 producer와 3개 consumer의 9조합이 같은 lease와 marker byte를 읽어 두 결론을 동일하게 내야 한다.
 
 Filesystem snapshot은 source 보호 경계다. Project test가 외부 DB·queue·network에 만드는 side effect까지 SENTINEL이 격리한다고 주장하지 않는다. 그런 test는 project가 별도 test environment로 제어해야 한다.
 
@@ -749,7 +737,7 @@ Lease 전체는 generation별 derived key로 HMAC한다. Key input은 `SENTINEL\
 
 Run directory와 file은 owner-only permission을 우선 적용한다. `started.json`은 command 시작 전에 exclusive create·file sync·run directory sync하며 runId, correlationId, UTC, tool·language, HMAC module token, command 종류와 keyed config digest만 담는다. Command argument·environment value·absolute path는 넣지 않는다. 긴 test·mutation 동안에는 project-wide lock을 잡지 않는다.
 
-V1 strict state store는 Linux local filesystem에서 모든 runtime이 같은 POSIX `fcntl` byte-range protocol을 통과한 경우만 지원한다. `commit.lock`의 byte 0, length 1에 history read는 shared read lock, terminal commit과 prune은 exclusive write lock을 건다. `flock`, lock-file 존재 검사와 timestamp 탈취를 섞지 않는다. TypeScript는 artifact가 고정된 Koffi libc FFI, Java와 Clojure는 artifact가 고정된 JNA libc FFI로 `fcntl`을 호출하며 first-party C·C++·JNI source를 만들지 않는다. 5개 구현은 Python·Go와의 pairwise lock 상호 배제와 all-runtime cross-process conformance를 통과해야 한다. 고정 FFI artifact나 runtime에서 POSIX record lock 상호 운용을 증명하지 못하면 해당 release를 차단한다. Network filesystem이나 atomic rename·directory sync 의미를 증명하지 못한 filesystem에서는 strict evidence를 만들지 않는다. OS가 process crash 때 record lock을 회수하므로 stale file을 지워 lock을 탈취하는 절차도 없다.
+V1 strict state store는 Linux local filesystem에서 모든 runtime이 같은 POSIX `fcntl` byte-range protocol을 통과한 경우만 지원한다. `commit.lock`의 byte 0, length 1에 history read는 shared read lock, terminal commit과 prune은 exclusive write lock을 건다. `flock`, lock-file 존재 검사와 timestamp 탈취를 섞지 않는다. TypeScript는 artifact가 고정된 Koffi libc FFI, Java는 artifact가 고정된 JNA libc FFI로 `fcntl`을 호출하며 first-party C·C++·JNI source를 만들지 않는다. 3개 구현은 Python과의 pairwise lock 상호 배제와 all-runtime cross-process conformance를 통과해야 한다. 고정 FFI artifact나 runtime에서 POSIX record lock 상호 운용을 증명하지 못하면 해당 release를 차단한다. Network filesystem이나 atomic rename·directory sync 의미를 증명하지 못한 filesystem에서는 strict evidence를 만들지 않는다. OS가 process crash 때 record lock을 회수하므로 stale file을 지워 lock을 탈취하는 절차도 없다.
 
 Terminal commit 직전에 exclusive lock을 얻고 completed history를 다시 읽는다. 그 최신 상태에서 next commitSequence를 위 절차로 durable allocate하고 lifecycle event를 계산한다. 각 event file과 마지막 `evidence.json`은 같은 commitSequence를 required로 가진다. Event는 exclusive create·file sync한 뒤 events directory를 sync한다. `evidence.json`은 event count·filename·content digest manifest를 포함하며 같은 run directory의 temporary file에 write·file sync한 뒤 atomic rename하고 run directory를 sync한다. 이 순서를 모두 끝낸 뒤에만 성공을 반환한다. Allocation 뒤 실패는 sequence gap으로 남고 재사용하지 않는다. History의 lifecycle·latest·current fold는 commitSequence만 사용하며 UTC는 표시와 retention cutoff에만 사용한다. History는 marker가 있어도 schema, event manifest와 digest가 하나라도 맞지 않으면 그 run을 `corrupt`로 논리적 제외하고 exit 7 `evidenceError`로 fail-closed한다. `history` 조회가 file을 이동·rename·수정한다는 뜻이 아니다. 유효한 `evidence.json`과 manifest가 있는 run만 completed다. 정상 명령은 completed run의 byte를 변경하지 않는다. Lock 획득 실패나 제한 시간 초과도 evidenceError다.
 
@@ -907,8 +895,8 @@ Occurrence·context fingerprint, project ID, module, path, runId, command·confi
 |---|---|---|
 |Unit|CRAP 공식·AST inventory, config precedence, 상태 mapping, gate, canonical hash, lifecycle fold|10..17, 26, 30..32, 47..50|
 |Integration|실제 coverage parser, snapshot, process timeout, bridge report, atomic evidence|14, 15, 19..27, 43, 45..54|
-|Acceptance|clean project에서 5개 CLI, strict pass·모든 실패 상태, source hash, privacy canary, polyglot module|01..09, 18, 28..31, 39..46, 52..55|
-|Conformance|vendored SPEC schema와 golden vector를 5개 언어가 동일하게 해석|07, 08, 33, 38, 44, 49, 54|
+|Acceptance|clean project에서 3개 CLI, strict pass·모든 실패 상태, source hash, privacy canary, polyglot module|01..09, 18, 28..31, 39..46, 52..55|
+|Conformance|vendored SPEC schema와 golden vector를 3개 언어가 동일하게 해석|07, 08, 33, 38, 44, 49, 54|
 |Documentation|README 필수 내용과 OKF frontmatter·index·log·link|36, 37|
 
 각 product-spec 검증 방법은 위 test에 연결한다. Fixture가 backend 내부 오류를 만들기 어렵다면 raw bridge fixture와 실제 smoke fixture를 함께 사용하며 parser fixture만으로 clean-install acceptance를 대체하지 않는다.
@@ -926,23 +914,21 @@ Occurrence·context fingerprint, project ID, module, path, runId, command·confi
 - 모든 9개 mutation 상태, unknown, duplicate, missing·extra mutant row와 candidate inventory digest 불일치
 - 두 baseline의 test inventory 불일치에서 backend·coverage 0회
 - assertion failure·test error·panic·nonzero exit 분리와 original control·mutant replay 불일치
-- Go snapshot-only test wrapper의 `t.Fail`·`FailNow`·`testing.F` fail·panic·`os.Exit`·subtest·child goroutine·runnable `Example*` output mismatch·`Fuzz*` seed·`TestMain` typed event와 unsupported kind preflight 반례
 - candidate와 fresh coverage exact join, 0회 uncovered, missing·ambiguous·backend raw 충돌은 backendError
 - 0 mutant, uncovered-only, timeout-only, compileError-only가 모두 실패
 - sealed backend config, unknown option·plugin·ambient environment override 거부
-- runner cache·retry·up-to-date skip 금지, execution nonce 불일치와 Go `(cached)` 0건
+- runner cache·retry·up-to-date skip 금지, execution nonce 불일치와 실행 결과 cache 재사용 0건
 - local cache는 snapshot 복사본에서만 사용하고 strict cache read 0회, cache replay finding observation 0회
 - native source discovery와 configured glob exact 대조, unclassified·overlap·scopeRegression 반례
 - partial·non-comparable·모든 non-success 결과가 resolved event를 만들지 않음
 - signal·backend crash 뒤 original source와 completed evidence 불변
 - output·coverage·raw·export·prune의 symlink·hardlink·path-swap·protected path 반례
-- Clojure read-eval·tagged literal·namespace side-effect 0회
 - mutmut pytest internal exit 3은 mutant toolError·전체 backendError, cache·coverage 제외, incomplete aggregate
 - Stryker incremental·inPlace·ignore 금지, plan event 누락·중복·지연·final set 불일치와 JSON source·replacement 제거
 - Robert backend timeout-as-killed, survivor exit 0, footer manifest와 coverage failure 반례
 - runId·correlationId, detected·persisted·resolved·reopened, 세 fingerprint와 semantic site insert·reorder·backend-ID vector
 - 같은 finding을 가진 두 품질 실행의 동시 terminal commit에서 한 실행만 `detected`, 다른 실행은 재조회 뒤 `persisted`가 됨
-- 5개 runtime의 같은 POSIX byte-range lock 상호 배제와 unsupported filesystem 거부
+- 3개 runtime의 같은 POSIX byte-range lock 상호 배제와 unsupported filesystem 거부
 - commit 각 sync 지점의 crash, event manifest 변조·누락은 corrupt·evidenceError
 - 품질 실행 commit과 `history` 조회·prune 경합에서 완료 bundle 불변, equal·backward UTC에서도 monotonic commitSequence lifecycle 순서, sequence allocation crash gap·rollback 차단, `committedAtUtc`·`startedAtUtc` cutoff equality, immutable incomplete selection 뒤 신규 run·selected run 완료, retention marker crash·손상·다중 cutoff·guardian drain과 lock 순서가 유지됨
 - Snapshot source의 read 중 편집, path 교체와 편집 후 원복 반례에서 stable capture와 pre-copy·destination·post-run original digest의 three-way invariant가 통과를 막음
@@ -956,7 +942,7 @@ Backend release는 실제 tiny project와 고정 raw report fixture가 모두 �
 
 ### 10.3 자기 품질 gate와 순환 신뢰 차단
 
-5개 실행형 repo는 자기 production inventory를 다음 두 독립 gate로 검사한다.
+3개 실행형 repo는 자기 production inventory를 다음 두 독립 gate로 검사한다.
 
 1. Fresh coverage에서 expected·analyzed callable이 같고 N/A 0, 모든 exact CRAP fraction이 8.0 이하
 2. Fresh full mutation에서 in-scope mutant 1개 이상, 전부 killed, 다른 상태·ignore·무단 제외 0
@@ -982,7 +968,7 @@ Equivalent 또는 invalid mutant 때문에 100% killed가 불가능해도 ignore
 
 Clean-install container는 image digest만으로 신뢰하지 않는다. Host OCI executor는 absolute binary digest·client와 local Engine version·commit·API·OS·arch, canonical Unix socket policy를 lock에 고정한다. Driver는 Docker endpoint·context·TLS·proxy environment를 봉인하고 매 session의 socket device·inode를 호출 전후 재검증한다. Pull 뒤 requested full reference, RepoDigest, image ID·config digest와 manifest·config platform을 대조한 뒤 그 image ID만 실행한다. Read-only golden corpus는 manifest 검증 후 owner-only tmpfs의 writable project copy로 옮기고, source·test·config는 read-only, `.sentinel`과 선언된 output만 writable로 제한한다. 따라서 quality command의 정상 state write와 source corpus 불변을 동시에 검증한다.
 
-`SENTINEL_SPEC` CI는 schema meta-validation, 모든 golden vector, manifest digest와 breaking-change version rule을 검사한다. 6개 repo는 default branch `main`, private visibility와 branch protection을 사용하고, release tag와 local·remote HEAD가 같은 경우만 완료 증거로 인정한다.
+`SENTINEL_SPEC` CI는 schema meta-validation, 모든 golden vector, manifest digest와 breaking-change version rule을 검사한다. 4개 repo는 default branch `main`, private visibility와 branch protection을 사용하고, release tag와 local·remote HEAD가 같은 경우만 완료 증거로 인정한다.
 
 Package registry 공개 배포는 하지 않는다. 설치는 private GitHub source 또는 release artifact를 사용하며 artifact digest를 검증한다. CI upload는 artifact root를 넓게 수집하지 않고 SENTINEL이 새로 만든 redacted result file의 exact path만 허용한다. `.sentinel/**`, 실제 key file `.sentinel/state-v1/project.json`, local cache, raw backend report와 snapshot은 denylist byte scan 뒤에도 업로드 대상이 될 수 없다. Ephemeral CI의 stable HMAC key와 SPEC read-only deploy key는 repository secret이 아니라 `sentinel-protected-main` Environment secret으로 둔다. 개인 private repository의 기능 범위에 맞춰 selected deployment branch는 `main` 하나, reviewer는 0개로 재검증한다. 사람이 local TTY에서 만든 exact-SHA·workflow·intent payload와 운영자 Ed25519 signature가 있어야 secret-bearing workflow를 dispatch하고, protected-main preflight가 pinned public key와 current unique run을 offline·read-only 검증해야 Environment job이 실행된다. PR·candidate·SPEC CI는 Environment 요청과 long-lived secret이 0이며 key를 log·cache·artifact에 쓰지 않는다. Enterprise organization으로 옮길 때 별도 reviewer와 self-review 차단을 추가할 수 있다. Branch policy, signed local approval과 exact workflow identity를 강제하지 못하면 release를 차단한다.
 
@@ -1001,7 +987,7 @@ Package registry 공개 배포는 하지 않는다. 설치는 private GitHub sou
 |요구사항-07|필수|4.1, 8.2|공통 결과 schema|
 |요구사항-08|필수|5.4, 9|종료 코드·오류 구분|
 |요구사항-09|필수|5.2|side-effect 없는 help|
-|요구사항-10|필수|6.1, 6.2|5개 언어 callable metric|
+|요구사항-10|필수|6.1, 6.2|3개 언어 callable metric|
 |요구사항-11|필수|6.1|CRAP 공식|
 |요구사항-12|필수|6.2|Python callable 구분|
 |요구사항-13|필수|6.2|TypeScript·TSX callable 구분|
@@ -1024,15 +1010,15 @@ Package registry 공개 배포는 하지 않는다. 설치는 private GitHub sou
 |요구사항-30|필수|7.4|strict kill rate|
 |요구사항-31|필수|7.3, 7.4|fresh full killed-only gate|
 |요구사항-32|필수|5.1, 7.2, 8.2|설정 우선순위·backend 증거|
-|요구사항-33|필수|4.1, 10.1, 10.4|6개 repo test·clean install|
+|요구사항-33|필수|4.1, 10.1, 10.4|4개 repo test·clean install|
 |요구사항-34|필수|6, 10.3|self CRAP|
 |요구사항-35|필수|7, 10.3, 10.4|self strict mutation·CI|
 |요구사항-36|필수|4.3, 4.4, 10.4|사용법·책임·lineage 문서|
 |요구사항-37|필수|4.4, 10.4|OKF v0.2 bundle|
 |요구사항-38|필수|2.1, 3.3, 4.1|SENTINEL_SPEC 단일 계약|
-|요구사항-39|필수|2.1, 4.3, 7.1|Go SENTINEL|
+|요구사항-39|범위 제외|기존 ID 보존|현재 공개 지원 범위 밖|
 |요구사항-40|필수|2.1, 4.3, 7.1|Java SENTINEL|
-|요구사항-41|필수|2.1, 4.3, 7.1|Clojure SENTINEL|
+|요구사항-41|범위 제외|기존 ID 보존|현재 공개 지원 범위 밖|
 |요구사항-42|필수|5.2, 5.3|공통 5개 command 의미|
 |요구사항-43|필수|7.1, 7.2, 8.2|backend exact identity·mapping|
 |요구사항-44|필수|3.3, 10.2, 10.4|SPEC conformance|
@@ -1048,13 +1034,13 @@ Package registry 공개 배포는 하지 않는다. 설치는 private GitHub sou
 |요구사항-54|필수|5.2, 8.6|local allowlist export|
 |요구사항-55|필수|2.4, 5.1|module별 polyglot routing|
 
-모든 필수 요구사항 55개가 설계에 매핑되며 보류 항목은 없다.
+기존 요구사항 ID 55개를 보존한다. 현재 공개 범위는 53개이며 요구사항-39·41은 범위 제외로 표시한다.
 
 ## 12. 되돌리기 비용과 3~5수 장기 시뮬레이션
 
-|결정|즉시 효과|다음 단계에서 닫히는 옵션|6개월 뒤 예상|실패 시 회복|
+|결정|즉시 효과|다음 단계에서 닫히는 옵션|4개월 뒤 예상|실패 시 회복|
 |---|---|---|---|---|
-|6개 독립 repo + vendored SPEC|언어별 독립 설치와 공통 계약 확보|단일 atomic monorepo release|SPEC lock update가 반복 작업으로 생김|CLI·schema를 유지한 채 mirror monorepo 또는 GitHub App 자동화 추가|
+|4개 독립 repo + vendored SPEC|언어별 독립 설치와 공통 계약 확보|단일 atomic monorepo release|SPEC lock update가 반복 작업으로 생김|CLI·schema를 유지한 채 mirror monorepo 또는 GitHub App 자동화 추가|
 |기존 backend + version bridge|성숙한 operator 재사용과 strict 의미 통제|backend 내부를 자유롭게 최적화|backend release마다 adapter admission 필요|pin 유지, bridge patch, Cosmic Ray 등 대체 backend, 마지막에 자체 engine 검토|
 |모든 mutation을 outer snapshot에서 실행|source manifest·crash로부터 원본 보호|원본 직접 실행의 최고 속도|큰 monorepo copy 시간이 눈에 띔|WorkspaceProvider만 reflink·copy-on-write로 교체|
 |모든 mutant killed만 pass|거짓 100%와 timeout 성공 차단|equivalent mutant ignore를 통한 쉬운 통과|backend operator 결함이 명확한 finding으로 쌓임|operator 수정 또는 backend 교체 후 compatibility version 갱신|
@@ -1074,16 +1060,13 @@ Package registry 공개 배포는 하지 않는다. 설치는 private GitHub sou
 ## 변경이력
 
 - 2026-08-31 | 기존 네이티브 4개 도구 설계 작성 | 변경: Python·TypeScript CRAP·mutation 자체 구현과 37개 요구사항을 설계 | 검증: 당시 요구사항 역방향 매핑 37개
-- 2026-09-02 | SENTINEL 다언어 설계로 교체 | 변경: `SENTINEL_SPEC`과 5개 실행형 repo, native CRAP, 고정 mutation backend bridge, killed-only gate, project-local 반복 결함 이력·privacy 구조로 전면 교체 | 검증: 요구사항-01..55 역방향 매핑, 공통규칙-01..10 대조, backend 공식 자료와 고정 upstream source 감사
+- 2026-09-02 | SENTINEL 다언어 설계로 교체 | 변경: `SENTINEL_SPEC`과 3개 실행형 repo, native CRAP, 고정 mutation backend bridge, killed-only gate, project-local 반복 결함 이력·privacy 구조로 전면 교체 | 검증: 요구사항-01..55 역방향 매핑, 공통규칙-01..10 대조, backend 공식 자료와 고정 upstream source 감사
 - 2026-09-02 | 승인 전 독립 설계 감사 반영 | 변경: candidate·coverage exact join, assertion control·replay, same-line callable fail-closed, sealed backend 환경, SafePathPolicy, HMAC evidence, cross-language lock·sync, stable key·retention 계약 보강 | 검증: 두 독립 agent의 false-pass·동시성·privacy red-team, 55개 역방향 매핑과 금지 표현 기계 검사
-- 2026-09-02 | 최종 계약 감사 보강 | 변경: local JSONL resolver, semantic site ID, native source reconciliation, fresh runner nonce, Robert execution bridge, atomic retention, descriptor-relative path safety, safe Clojure reader와 cache observation 규칙 추가 | 검증: 제품 사용성·scope 축소·backend outcome·TOCTOU·반복 fingerprint 반례 대조
-- 2026-09-02 | 고정본 최종 감사 차단 해소 | 변경: CRAP coverage 오류 taxonomy, completed·incomplete retention UTC 경계, Stryker plan event candidate 고정, snapshot stable capture, Go 전체 수집 test kind 계약 추가 | 검증: 제품 명세 감사와 독립 계약 감사의 차단 2건·중요 3건을 반례와 종료 코드에 재대조
-- 2026-09-02 | 수정본 중요 계약 보강 | 변경: post-run original metadata identity와 Go Test·Fuzz·Example별 typed assertion 조합을 명시 | 검증: 편집 후 원복 ABA와 Example output mismatch·panic 구분 반례를 독립 재감사
 - 2026-09-02 | 사용자 설계 승인 | 변경: 설계 상태를 `approved`로 전환해 exec-plan 작성 gate를 열음 | 검증: 사용자 응답 `승인` 확인, 직전 고정본 독립 감사 2회 FINAL PASS
 - 2026-09-02 | 승인 실행계획 교차연결 | 변경: 활성 exec-plan related와 기존 lock 계약의 schema·backend admission artifact를 저장소 구조에 명시 | 검증: plan의 역참조와 설계 7.2 backend lock 16개 논리 field 대조
-- 2026-09-02 | Self-quality 실행 가능성 보강 | 변경: first-party C·C++·JNI helper를 제거하고 TypeScript 고정 FFI와 Java·Clojure 고정 JDK API를 pairwise POSIX lock admission으로 제한 | 검증: 요구사항-34·35의 주언어 전체 production 범위와 5-runtime lock 상호 운용 조건 대조
-- 2026-09-02 | Java·Clojure syscall 경계 실행 가능성 보강 | 변경: 공개 JDK API만으로 증명할 수 없는 descriptor-relative `openat2`·`fstat`·`renameat2`·`unlinkat`과 POSIX record lock을 exact-locked JNA libc FFI로 통일하고 first-party native source 금지는 유지 | 검증: SafePath TOCTOU matrix, 5-runtime pairwise lock과 JNA artifact·ABI admission 대조
-- 2026-09-02 | 결정적 fault와 clean-install 신뢰 경계 보강 | 변경: 5개 runtime에 production Entropy·FileOps·Clock·Process facade와 test-only 주입 경계를 두고 OCI executor·local daemon·socket·pulled image identity를 고정했으며 read-only corpus를 owner-only tmpfs project copy에서 실행하도록 분리 | 검증: installed CLI와 in-process CLI-entry 역할 분리, release artifact test adapter 0개, state write·source 불변·remote daemon false-pass 반례 대조
+- 2026-09-02 | Self-quality 실행 가능성 보강 | 변경: first-party C·C++·JNI helper를 제거하고 TypeScript 고정 FFI와 Java 고정 JDK API를 pairwise POSIX lock admission으로 제한 | 검증: 요구사항-34·35의 주언어 전체 production 범위와 3-runtime lock 상호 운용 조건 대조
+- 2026-09-02 | Java syscall 경계 실행 가능성 보강 | 변경: 공개 JDK API만으로 증명할 수 없는 descriptor-relative `openat2`·`fstat`·`renameat2`·`unlinkat`과 POSIX record lock을 exact-locked JNA libc FFI로 통일하고 first-party native source 금지는 유지 | 검증: SafePath TOCTOU matrix, 3-runtime pairwise lock과 JNA artifact·ABI admission 대조
+- 2026-09-02 | 결정적 fault와 clean-install 신뢰 경계 보강 | 변경: 3개 runtime에 production Entropy·FileOps·Clock·Process facade와 test-only 주입 경계를 두고 OCI executor·local daemon·socket·pulled image identity를 고정했으며 read-only corpus를 owner-only tmpfs project copy에서 실행하도록 분리 | 검증: installed CLI와 in-process CLI-entry 역할 분리, release artifact test adapter 0개, state write·source 불변·remote daemon false-pass 반례 대조
 - 2026-09-03 | 개인 private 저장소 CI 승인 계약 수정 | 변경: 지원되지 않는 Environment required reviewer를 제거하고 main-only Environment, local typed approval receipt와 exact-SHA dispatch로 교체 | 검증: GitHub 개인 private repository 기능 범위와 T28 실행계획 교차 대조
 - 2026-09-03 | 배경지식 없는 독자를 위한 설명 보강 | 변경: 한 문장 결론, 핵심 용어, 입력→처리→출력, 읽는 순서와 모든 diagram·code block의 구성요소 풀이 추가 | 검증: 승인 frontmatter 유지, code fence 20개 짝 일치, 요구사항-01..55 역방향 매핑 연속성 확인
 - 2026-09-08 | 통합 명령 추가 승인 연결 | 변경: 독립 언어 실행기 위에 선택형 설치와 공통 진입점을 추가하는 별도 설계 링크 | 검증: 기존 여섯 저장소 책임·backend 기본값은 유지하고 통합-01..06으로 추가 범위를 분리

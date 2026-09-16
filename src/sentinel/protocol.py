@@ -20,6 +20,7 @@ MAX_OUTPUT_BYTES = 1024 * 1024
 _REFERENCE_OUTPUT_BYTES = 16777216 + 65536 + 4096
 STATUS_CODES = {
     "passed": 0,
+    "noChanges": 0,
     "toolError": 1,
     "qualityFailed": 2,
     "usageConfigError": 3,
@@ -238,6 +239,8 @@ def _parse_response(raw: bytes, request: Dict[str, object], bundle: Bundle, proc
     if status not in STATUS_CODES or response["exitCode"] != STATUS_CODES[status]:
         return Observation("backendError", 6)
     if response["passed"] is not (status == "passed"):
+        return Observation("backendError", 6)
+    if status == "noChanges" and "changedFiles" not in request:
         return Observation("backendError", 6)
     if process_code != response["exitCode"]:
         return Observation("backendError", 6)

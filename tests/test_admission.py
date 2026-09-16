@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from test_cli import SRC_ROOT, cli, install_bundle, make_bundle, module, workspace, write_json
+from test_changed import git
 
 sys.path.insert(0, SRC_ROOT)
 
@@ -155,6 +156,61 @@ class AdmittedCheckTests(unittest.TestCase):
         self.assertEqual(payload["results"][0]["admitted"], True)
         self.assertFalse(payload["pass"])
         self.assertFalse(payload["certified"])
+
+    def test_changed_mode_never_certifies_modules_that_were_not_checked(self):
+        python_digest, python_entrypoint = self.install("python")
+        typescript_digest, typescript_entrypoint = self.install("typescript")
+        write_json(self.admission, document(entry(digest=python_entrypoint),
+                                           entry(language="typescript", digest=typescript_entrypoint)))
+        workspace(self.project, [module("one", "python", "one", digest=python_digest),
+                                 module("two", "typescript", "two", digest=typescript_digest)])
+        (self.project / "one" / "source.py").write_text("x = 1\n")
+        (self.project / "two" / "source.ts").write_text("const x = 1;\n")
+        git(self.project, "init", "-q", "-b", "main")
+        git(self.project, "add", ".")
+        git(self.project, "commit", "-q", "-m", "base")
+        unchanged = self.run_command("check", "--changed")
+        payload = json.loads(unchanged.stdout)
+        self.assertEqual(unchanged.returncode, 0, unchanged.stderr)
+        self.assertTrue(payload["pass"])
+        self.assertFalse(payload["certified"])
+        self.assertEqual([item["status"] for item in payload["results"]], ["noChanges", "noChanges"])
+        self.assertFalse((self.base / "python-count").exists())
+        self.assertFalse((self.base / "typescript-count").exists())
+
+        (self.project / "one" / "source.py").write_text("x = 2\n")
+        mixed = self.run_command("check", "--changed")
+        payload = json.loads(mixed.stdout)
+        self.assertEqual(mixed.returncode, 0, mixed.stderr)
+        self.assertTrue(payload["pass"])
+        self.assertFalse(payload["certified"])
+        self.assertEqual([item["status"] for item in payload["results"]], ["passed", "noChanges"])
+        self.assertFalse((self.base / "typescript-count").exists())
+
+        (self.project / "two" / "source.ts").write_text("const x = 2;\n")
+        checked = self.run_command("check", "--changed")
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+        self.assertTrue(json.loads(checked.stdout)["certified"])
+
+    def test_adapter_can_report_that_changed_files_contain_no_production_code(self):
+        digest, entrypoint = self.install("python", behavior="no_changes")
+        write_json(self.admission, document(entry(digest=entrypoint)))
+        workspace(self.project, [module("one", "python", "one", digest=digest)])
+        git(self.project, "init", "-q", "-b", "main")
+        git(self.project, "add", ".")
+        git(self.project, "commit", "-q", "-m", "base")
+        (self.project / "one" / "README.md").write_text("Documentation change\n")
+        completed = self.run_command("check", "--changed")
+        payload = json.loads(completed.stdout)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(payload["results"][0]["status"], "noChanges")
+        self.assertTrue(payload["pass"])
+        self.assertFalse(payload["certified"])
+        self.assertEqual((self.base / "python-count").read_text(), "1")
+
+        full = self.run_command("check")
+        self.assertEqual(full.returncode, 6, full.stderr)
+        self.assertEqual(json.loads(full.stdout)["results"][0]["status"], "backendError")
 
     def test_invalid_admission_file_is_a_usage_error_before_any_child(self):
         digest, _ = self.install("python")

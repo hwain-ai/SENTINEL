@@ -40,7 +40,7 @@ def _reject_duplicate_keys(pairs: Sequence[Tuple[str, Any]]) -> Dict[str, Any]:
     return result
 
 
-def read_json(path: Path, maximum: int, label: str) -> Any:
+def read_json_snapshot(path: Path, maximum: int, label: str) -> Tuple[Any, bytes]:
     try:
         descriptor = os.open(str(path), os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))
         try:
@@ -68,7 +68,11 @@ def read_json(path: Path, maximum: int, label: str) -> Any:
         raise
     except OSError:
         raise SentinelError("unreadableFile", f"{label} could not be read")
-    return parse_json_bytes(raw, label)
+    return parse_json_bytes(raw, label), raw
+
+
+def read_json(path: Path, maximum: int, label: str) -> Any:
+    return read_json_snapshot(path, maximum, label)[0]
 
 
 def parse_json_bytes(raw: bytes, label: str) -> Any:
@@ -182,8 +186,9 @@ def _load_module(value: Any, project: Path) -> Module:
     return Module(module_id, language, root, version, digest, config)
 
 
-def load_workspace(project_value: str, config_value: str) -> Tuple[Path, List[Module], Gate]:
-    project = Path(project_value).absolute()
+def workspace_config_path(project: Path, config_value: str, *, allow_missing: bool = False) -> Path:
+    """Resolve a config path through real project directories; setup may create the final file."""
+
     _reject_path_ancestors(project, "project")
     try:
         metadata = os.lstat(project)
@@ -192,8 +197,26 @@ def load_workspace(project_value: str, config_value: str) -> Tuple[Path, List[Mo
     if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
         raise SentinelError("invalidProject", "project must be a real directory")
     config_relative = _relative_posix(config_value, "workspace config")
-    config_path = _reject_symlinks_between(project, config_relative, "workspace config")
+    parent = _reject_symlinks_between(project, config_relative.parent, "workspace config parent")
+    if not parent.is_dir():
+        raise SentinelError("invalidPath", "workspace config parent must be a directory")
+    config_path = project / config_relative
+    if allow_missing and not config_path.exists() and not config_path.is_symlink():
+        return config_path
+    return _reject_symlinks_between(project, config_relative, "workspace config")
+
+
+def load_workspace(project_value: str, config_value: str) -> Tuple[Path, List[Module], Gate]:
+    project = Path(project_value).absolute()
+    config_path = workspace_config_path(project, config_value)
     payload = read_json(config_path, MAX_CONFIG_BYTES, "workspace config")
+    modules, gate = parse_workspace(project, payload)
+    return project, modules, gate
+
+
+def parse_workspace(project: Path, payload: Any) -> Tuple[List[Module], Gate]:
+    """Validate a workspace document, including its existing roots and config files."""
+
     if not isinstance(payload, dict):
         raise SentinelError("invalidType", "workspace config must be an object")
     require_exact_keys(payload, ("schemaVersion", "modules"), ("gate",), "workspace config")
@@ -212,7 +235,7 @@ def load_workspace(project_value: str, config_value: str) -> Tuple[Path, List[Mo
         for other, _ in roots[index + 1 :]:
             if _inside(other, root):
                 raise SentinelError("nestedModuleRoots", "module roots must not overlap")
-    return project, modules, gate
+    return modules, gate
 
 
 def select_modules(modules: Sequence[Module], languages: Sequence[str], module_ids: Sequence[str]) -> Tuple[str, List[Module]]:
