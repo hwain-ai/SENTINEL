@@ -166,6 +166,19 @@ python3 scripts/admission.py lint
 
 `--admission <파일>`을 doctor·check 에 주면 패키지의 목록 대신 그 파일을 씁니다. 조직이 자체 승인 목록을 운영할 때 씁니다.
 
+### 승인된 도구 버전 갱신
+
+미검사 인증 오류를 고친 버전은 Python·TypeScript 0.1.2, Java 0.1.3입니다. 이전 버전의 승인 항목은 은퇴하므로 예전 묶음은 기본 check에서 `backendNotAdmitted`로 거부됩니다. 이전 설치 파일은 그대로 남습니다. 새 승인 목록을 포함한 통합 CLI를 재설치하고, 선택한 언어 도구도 새 버전으로 설정해야 합니다.
+
+setup은 기존 언어 소스를 자동으로 갱신하지 않습니다. 최신 소스를 따로 준비하거나, 아직 없는 새 폴더를 `--sources`로 지정하면 최신 저장소를 복제합니다. 아래는 Python 모듈이 이미 등록된 프로젝트를 갱신하는 예시입니다. 기존 모듈 폴더·설정·품질 기준은 유지됩니다. 기존에 `--config`나 `--tools`로 별도 경로를 지정했다면 갱신할 때도 같은 옵션과 경로를 지정합니다. 프로젝트 의존성 준비가 필요한 경우 기존에 사용한 관련 옵션도 함께 지정합니다.
+
+```bash
+# 최신 SENTINEL 저장소에서 실행. --reinstall = 현재 소스로 CLI 재설치
+uv pip install --python .venv/bin/python --reinstall .
+# --sources = 새 언어 소스를 받을 폴더. --project는 기존 검사 프로젝트의 Linux 경로
+.venv/bin/sentinel setup --project "<프로젝트 경로>" --language python --sources "$HOME/.sentinel/sources-20260916"
+```
+
 도구의 실제 실패 상태는 toolError=1, qualityFailed=2, usageConfigError=3, baselineFailed=4, dependencyError=5, backendError=6, evidenceError=7, cancelled=8로 구분합니다. 여러 실패가 섞이면 7,1,5,6,8,4,3,2 순서로 전체 종료 코드를 정합니다. 설치 누락이나 손상이 발견되면 선택한 도구를 하나도 실행하지 않습니다.
 
 취소와 자식 프로세스 정리 실패가 겹치면 해당 모듈은 backendError=6으로 남기고, 아직 시작하지 않은 모듈은 cancelled=8로 표시합니다. 이후 도구는 실행하지 않습니다. 명령의 출력 통로가 닫혔거나 사용할 수 없으면 내부 예외 대신 종료 코드 3으로 끝냅니다.
@@ -176,8 +189,8 @@ python3 scripts/admission.py lint
 
 실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [세 언어 비교 기록](docs/references/sentinel-original-tool-comparison.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 이 저장소 자체가 마켓플레이스입니다. Claude Code는 `claude plugin marketplace add hwain-ai/SENTINEL` 뒤 `claude plugin install sentinel@sentinel`, Codex는 `codex plugin marketplace add hwain-ai/SENTINEL` 뒤 `codex plugin add sentinel@sentinel`로 설치합니다. 플러그인은 지침만 담으므로 sentinel 명령과 setup은 따로 실행해야 합니다.
 
-## 남은 단계
+## 검증 범위와 확장
 
-현재 실제 결과와 남은 항목은 [호스트·WSL 검증 기록](docs/references/sentinel-host-validation.md)에서 관리합니다. 과거의 언어 연결·CI 승인 대기와 현재의 호스트 인증·실제 호출 검증을 구분합니다. 플러그인은 동일 sentinel 명령을 호출하며 별도 품질 판정을 하지 않습니다.
+두 호스트의 실제 설치·스킬 발견·기본 호출과 세 언어의 성공·실패·미검사·누락·취소 시험을 완료했습니다. 결과와 환경별 한계는 [호스트·WSL 검증 기록](docs/references/sentinel-host-validation.md)에서 관리합니다. 더 큰 사용자 프로젝트와 다른 Linux CPU·커널 조합은 별도 검증 범위입니다. 플러그인은 동일 sentinel 명령을 호출하며 별도 품질 판정을 하지 않습니다.
 
 각 언어는 원래 빌드·품질 결과·원본 보호·중단 뒤 정리가 확인된 범위만 지원 대상으로 기록합니다. 단위·프로세스 테스트 통과를 실제 호스트 검증 대신 사용하지 않습니다. 기존 언어별 검사 도구의 기본값과 잠금 버전은 유지합니다.
