@@ -1,37 +1,48 @@
-# SENTINEL 호스트 플러그인 소스
+# SENTINEL 플러그인
 
-이 폴더는 Codex와 Claude Code가 같은 SENTINEL 스킬을 찾도록 준비한 플러그인 소스다. 스킬은 검사 요청을 처리하는 지침이다. 저장소 루트의 `.claude-plugin/marketplace.json`(Claude Code)과 `.agents/plugins/marketplace.json`(Codex)이 이 폴더를 가리키므로, 저장소 자체를 마켓플레이스로 등록해 설치한다. 이 묶음만으로 품질을 인증하지 않는다.
+Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있게 하는 공통 사용 지침**입니다. 실제 검사는 별도로 설치한 SENTINEL 실행기가 수행합니다.
 
-## 구성
+## 처음 사용하는 분
 
-- `.codex-plugin/plugin.json`: Codex용 플러그인 설정
-- `.claude-plugin/plugin.json`: Claude Code용 플러그인 설정
+**[저장소 README의 단계별 사용 가이드](../../README.md#사용-가이드)를 먼저 따르세요.** 한 곳에서 설치부터 첫 검사까지 안내합니다.
+
+| 순서 | 할 일 |
+|---|---|
+| 0 | [Linux 또는 Windows WSL2 실행 환경 확인](../../README.md#step-0) |
+| 1 | [Claude Code 또는 Codex에 플러그인 설치](../../README.md#step-1) |
+| 2 | [SENTINEL 실행기 설치](../../README.md#step-2) |
+| 3 | [검사할 프로젝트와 언어 도구 경로 지정](../../README.md#step-3) |
+| 4 | [필요한 언어의 도구 준비와 프로젝트 설정](../../README.md#step-4) |
+| 5 | [범위·설치 상태 확인 후 실제 검사](../../README.md#step-5) |
+| 6 | [AI 대화창에서 검사 요청](../../README.md#step-6) |
+
+플러그인 설치에는 저장소를 직접 복제할 필요가 없습니다. 호스트가 GitHub에서 설치 목록과 플러그인을 가져옵니다. 이 폴더만 설치해도 실행기·언어 SDK가 함께 설치되는 것은 아닙니다.
+
+이미 실행기와 프로젝트 설정이 있다면 새 대화에서 SENTINEL 스킬을 사용하고, **신뢰할 실행 파일·프로젝트의 절대 경로**를 알려 주세요. 별도 도구 폴더를 사용했다면 그 경로도 지정합니다. Windows에서는 WSL 배포판 이름과 Linux 경로를 전달합니다. 실제 요청문은 위 6단계에 있습니다.
+
+## 무엇을 실행하나요?
+
+| 요청 | 사용 명령 | 의미 |
+|---|---|---|
+| 검사 범위 확인 | `plan` | 등록된 대상을 읽음 |
+| 설치 상태 진단 | `doctor` | 설치 파일의 버전·지문·승인 여부 확인 |
+| 프로젝트 최초 설정 | `setup` | 필요한 언어 도구 준비와 설정 파일 생성 |
+| 기본 품질 검사 | `check` | 승인된 검사기로 선택 범위 검사 |
+| 변경 코드 검사 | `check --changed` | 변경된 생산 코드 범위 검사 |
+
+설명만 요청하면 명령을 실행하지 않습니다. 실행기가 없거나 확인할 수 없으면 전제 조건을 설명하고 중단합니다. 이미 준비된 실행기를 통한 언어 SDK 설치는 `setup`으로 수행합니다. 플러그인의 정확한 호출 규칙은 [SKILL.md](skills/sentinel/SKILL.md)에 있습니다.
+
+`doctor`의 `ready`는 실제 품질 통과가 아닙니다. `check`에서 실제로 `passed`이고 `certified=true`여야 선택 범위의 통과입니다. `noChanges`는 미검사입니다. [검사 복사본과 원본의 설정·기록 폴더](../../README.md#검사는-어디에서-실행되나요)도 구분하세요.
+
+## 플러그인 소스 구성
+
+- `.codex-plugin/plugin.json`: Codex용 설정
+- `.claude-plugin/plugin.json`: Claude Code용 설정
 - `skills/sentinel/SKILL.md`: 두 호스트가 함께 사용하는 검사 지침
 
-두 설정은 모두 같은 `./skills/` 폴더를 가리킨다. 별도 연결 프로그램·서버·자동 실행 훅·언어 개발 도구·검사 엔진은 포함하지 않는다.
+두 설정은 같은 `./skills/`를 사용합니다. 저장소 루트의 `.agents/plugins/marketplace.json`과 `.claude-plugin/marketplace.json`이 이 폴더를 가리킵니다. 로컬 소스를 마켓플레이스로 등록할 때는 이 폴더 자체가 아닌 **SENTINEL 저장소 루트**를 지정합니다.
 
-## 전제 조건과 경계
-
-사용자가 선택한, 이미 설치되어 신뢰할 수 있는 SENTINEL 0.1.0 실행 파일과 검사할 프로젝트 경로가 필요하다. 이 폴더는 Python 설치 묶음과 별개다. 폴더 전체를 복사해도 플러그인 파일만 전달되며 SENTINEL 명령과 언어 도구는 함께 설치되지 않는다.
-
-플러그인 자체를 만드는 데 컨테이너는 필요하지 않다. 검사 시작·종료·프로세스 정리는 공통 SENTINEL 실행기가 담당한다. 기본 세 언어 검사를 보안 컨테이너 안에서 실행한다고 보장하지 않는다. 플러그인은 기본 `check`의 거부를 우회하거나 언어별 검사 엔진을 직접 실행하지 않는다.
-
-언어 SDK와 도구 묶음이 없을 때 스킬이 실행할 수 있는 설치 경로는 `sentinel setup` 하나뿐이다. 언어·기준값·설치 범위가 정해지지 않았으면 먼저 확인하고, 같은 세션에서 이미 승인받았다면 그대로 진행한다. 여러 언어를 처음 설정할 때는 `--module-root`로 실제 폴더를 각각 명시한다. setup의 동작은 [저장소 README](../../README.md#첫-실행-설정)에 있다.
-
-Windows에서는 호스트 플러그인을 Windows에 설치해도 CLI와 언어 도구는 WSL 내부에 준비한다. 신뢰한 Linux 실행 파일·프로젝트·도구 폴더와 배포판 이름을 스킬에 알려 준다. 스킬은 `wsl.exe --exec`의 인자로 명령을 전달하며 Windows Python으로 Linux CLI를 실행하지 않는다.
-
-## 실제 설치와 확인
-
-검증한 로컬 저장소를 마켓플레이스로 추가한 뒤 플러그인을 설치한다. 아래 `<SENTINEL 저장소 경로>`는 이 저장소 루트이며 `plugins/sentinel` 자체가 아니다.
-
-```text
-codex plugin marketplace add <SENTINEL 저장소 경로>
-codex plugin add sentinel@sentinel
-claude plugin marketplace add <SENTINEL 저장소 경로> --scope user
-claude plugin install sentinel@sentinel --scope user
-```
-
-설치 후 새 세션에서 sentinel 스킬을 사용한다. `doctor`의 ready는 설치 확인, `check`의 passed는 실제 검사 통과, `noChanges`는 미검사다. 미검사는 종료 0이어도 인증하지 않는다. [실제 호스트·WSL 검증 기록](../../docs/references/sentinel-host-validation.md)에 설치 발견과 실제 실행 결과를 나눠 기록한다.
+별도 서버·자동 실행 훅·언어 SDK·검사 엔진은 포함하지 않습니다. 기본 검사가 보안 컨테이너 안에서 실행된다는 보장도 하지 않습니다. 실제 설치·스킬 발견·호출 검증은 [호스트·WSL 검증 기록](../../docs/references/sentinel-host-validation.md)에 있습니다.
 
 ## 소스 검증
 

@@ -1,196 +1,448 @@
-# SENTINEL 통합 실행기
+# SENTINEL
 
-SENTINEL은 하나의 명령으로 등록된 프로젝트를 검사하고, 필요한 언어 도구만 버전을 고정해 설치하는 로컬 실행기입니다.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-green)](pyproject.toml)
+[![Python](https://img.shields.io/badge/python-3.9%2B-yellow)](pyproject.toml)
 
-- 플러그인이 지원하는 언어: Python, TypeScript, Java 세 가지입니다. 각 언어는 공개 프로젝트에서 원본 도구와 결과를 대조해 확인했습니다.
-- 기본 `check` 는 승인된 도구 묶음만 실행합니다. 승인이란 각 언어 검사기 저장소의 CI(자체 시험 전체)를 통과한 commit 의 어댑터를 이 저장소의 `src/sentinel/admission.json` 에 기록한 것이고, 모든 모듈이 승인된 묶음으로 통과하면 결과가 `certified=true` 가 됩니다. 승인되지 않은 묶음은 `--experimental` 로만 실행되며 그 결과는 인증되지 않습니다.
-- 최신 진행 상황은 [현재 진행 순서](docs/exec-plans/active/2026-09-sentinel-unified-entry.md#현재-진행-순서), 실제 설치·호출 결과는 [호스트·WSL 검증 기록](docs/references/sentinel-host-validation.md)에서 확인합니다.
+> 코드의 복잡도와 테스트의 결함 탐지 능력을 함께 검사하는 로컬 품질 검사 도구입니다.
 
-## 현재 제공하는 것
+SENTINEL은 **Python·TypeScript·Java 프로젝트의 코드와 테스트를 검사**하고 정해 둔 기준을 충족했는지 알려 줍니다. 터미널에서 직접 실행하거나, Claude Code·Codex에 플러그인을 설치해 대화로 검사를 요청할 수 있습니다.
 
-|명령|실제 동작|외부 도구 실행|
-|---|---|---|
-|plan|설정 파일에서 전체 또는 선택한 모듈 목록을 확인한다.|없음|
-|doctor|선택한 설치 파일의 버전·내용 지문을 확인한다. 언어 SDK 자체의 실행 가능성을 확인하는 명령은 아니다.|없음|
-|install|신뢰하는 로컬 도구 묶음을 언어·버전·지문별 독립 폴더에 복사한다.|없음|
-|check|설치와 승인을 먼저 확인한다. 승인된 묶음의 모듈만 실행하고, 승인되지 않은 모듈은 backendNotAdmitted(6)로 두고 시작하지 않는다.|있음. 승인된 묶음만|
-|check --experimental|승인 여부와 상관없이 선택한 도구들을 차례로 호출한다. 정식 인증은 하지 않는다.|있음. 정식 인증은 하지 않음|
-|setup|언어 저장소·SDK·도구 묶음을 준비하고 두 설정 파일과 기준값을 쓴다. 처음 한 번, 또는 언어를 추가할 때 실행한다.|있음. git·언어 bootstrap 스크립트|
+**처음 쓰는 분은 [사용 가이드](#사용-가이드)를 순서대로 따라가세요.** 플러그인 설치와 실제 검사 프로그램 설치는 별도 단계입니다.
 
-모듈은 따로 검사할 프로젝트 폴더입니다. 예를 들어 Python 서버와 TypeScript 화면을 서로 다른 모듈로 등록할 수 있습니다. 전체 실행은 **등록된 모듈 전체**를 뜻하며, 저장소의 모든 언어나 파일을 자동으로 발견했다는 뜻이 아닙니다.
+## 목차
 
-SDK는 해당 언어의 프로그램을 빌드하고 실행하는 도구 모음입니다. SENTINEL 명령의 설치와 언어 도구·SDK의 준비는 별개입니다.
+- [주요 기능](#주요-기능)
+- [기술 스택](#기술-스택)
+- [사용 가이드](#사용-가이드)
+  - [0. 실행 환경 확인](#step-0)
+  - [1. AI 플러그인 설치](#step-1)
+  - [2. SENTINEL 실행기 설치](#step-2)
+  - [3. 검사할 프로젝트 지정](#step-3)
+  - [4. 프로젝트 최초 설정](#step-4)
+  - [5. 첫 검사와 결과 확인](#step-5)
+  - [6. AI 대화창에서 검사 요청](#step-6)
+- [검사는 어디에서 실행되나요?](#검사는-어디에서-실행되나요)
+- [자주 쓰는 명령](#자주-쓰는-명령)
+- [문제 해결](#문제-해결)
+- [승인된 도구 버전 갱신](#승인된-도구-버전-갱신)
+- [프로젝트 구조](#프로젝트-구조)
+- [검증 범위와 관련 문서](#검증-범위와-관련-문서)
 
-## 지원 플랫폼
+## 주요 기능
 
-통합 실행기의 현재 지원 경로는 **Linux이며 Windows에서는 WSL2 내부에 설치해서 사용합니다.** 이번 실제 검증 환경은 Ubuntu x86_64 / WSL2입니다. Windows의 Codex·Claude Code는 `wsl.exe`로 Linux 실행 파일을 호출합니다. CLI·언어 도구·검사할 프로젝트는 WSL의 Linux 파일시스템에 준비하는 것을 권장합니다. Windows에서 변환된 줄바꿈은 승인된 실행 파일 지문과 달라질 수 있습니다.
+- **복잡도와 테스트 범위를 함께 평가합니다.** CRAP 점수는 코드가 얼마나 복잡하고 테스트가 얼마나 실행해 봤는지를 함께 반영합니다. 기본 상한은 8입니다.
+- **테스트가 잘못된 코드를 잡아내는지 확인합니다.** 변이 검사(mutation testing)는 코드를 일부러 조금 바꾼 복사본을 만들고 테스트가 이를 발견하는지 확인합니다. 기본 탐지 비율은 100%입니다.
+- **필요한 언어의 검사 환경을 준비합니다.** `setup`이 언어별 검사기와 SDK(컴파일·실행 도구 모음)를 준비하고 프로젝트 설정을 만듭니다.
+- **등록한 전체 모듈 또는 변경한 코드만 검사합니다.** 모듈은 따로 검사할 프로젝트 폴더입니다. 예를 들어 Python 서버와 TypeScript 화면을 각각 등록할 수 있습니다.
+- **실제 통과와 미검사를 구분합니다.** 승인된 도구로 선택 범위를 실제 검사해 통과했을 때만 `certified=true`입니다. 변경할 코드가 없어 건너뛴 `noChanges`는 통과가 아닙니다.
 
-macOS의 통합 설치는 현재 지원하지 않습니다. 묶음 게시에 Linux `renameat2`가 필요하기 때문입니다. 언어 검사기별 SDK 잠금과 여러 플랫폼 CI가 있어도 통합 설치·호스트 호출의 지원을 뜻하지 않습니다. 다른 CPU·커널 조합도 해당 경로를 별도로 검증해야 합니다. WSL의 오래된 커널에서는 선택적 격리 코드의 일부 시험이 실패하며, 기본 세 언어 명령 시험과 구분해 [검증 기록](docs/references/sentinel-host-validation.md)에 남깁니다.
+여기서 인증은 **이번에 선택한 코드가 SENTINEL의 품질 기준을 통과했다는 의미**입니다. 제품의 모든 버그·보안 문제·운영 위험이 없다는 뜻은 아닙니다.
 
-## 첫 실행 설정
+## 기술 스택
 
-sentinel 명령을 설치한 뒤 검사할 프로젝트에서 한 번 실행합니다. 언어는 python, typescript, java 중에서 반복 지정하고, 생략하면 세 언어를 모두 선택합니다. 새로 여러 언어를 설정할 때는 서로 겹치지 않는 기존 폴더를 `--module-root 언어=폴더`로 각각 지정해야 합니다. 단일 언어를 처음 설정할 때만 기본 폴더가 `.`입니다.
-
-```bash
-# api/와 web/가 이미 존재하는 프로젝트 예시. 실제 폴더명으로 바꾼다.
-# setup = 첫 실행 설정; --module-root = 언어별 검사 폴더
-# --crap-max 8 = CRAP 상한(기본 8); --mutation-min 100 = 변이 최소 kill 비율 %(기본 100)
-.venv/bin/sentinel setup --project . --language python --language typescript --module-root python=api --module-root typescript=web --crap-max 8 --mutation-min 100
-```
-
-setup은 아래 항목을 준비합니다. 폴더 구성을 먼저 검증하고 언어 도구·프로젝트 의존성 설치가 모두 성공하면 각 모듈 설정을 만든 뒤 workspace를 마지막에 기록합니다.
-
-1. 언어 저장소를 `~/.sentinel/sources/SENTINEL_PY` 같은 폴더에 둡니다. 없으면 github.com/hwain-ai 의 같은 이름 저장소를 git clone 합니다. 다른 위치는 `--sources`로 지정합니다.
-2. 각 저장소의 `sentinel-tool/setup.sh`를 실행합니다. 이 스크립트는 잠금 파일의 공식 주소·SHA-256으로 언어 SDK를 내려받고 검사기를 준비합니다. 이미 준비돼 있으면 확인만 하고 지나갑니다. 세 언어를 모두 준비하면 약 2GB를 내려받습니다.
-3. 저장소의 `sentinel-tool/sentinel-tool` 실행 파일과 저장소 위치를 적은 `home` 파일로 도구 묶음을 만들어 `--tools`(기본 프로젝트의 .sentinel-tools)에 설치합니다.
-4. `sentinel.workspace.json`에 언어별 모듈과 `gate`(crapMax, mutationMin)를 씁니다. 기존 모듈의 ID·폴더·설정과 기준값은 보존하고 선택한 언어의 도구 버전·지문만 갱신합니다. 폴더·기준값을 명시하면 그 값으로 바꿉니다. 같은 언어의 모듈이 여러 개이면 언어 하나에 폴더 하나를 지정하는 변경은 모호하므로 거부합니다. 잘못된 폴더 구성은 다운로드 전에 거부합니다.
-5. Python·TypeScript 검사기가 읽는 `sentinel.config.json`을 **각 모듈 폴더 안에** 만듭니다. 기본값은 소스 `src/`, 테스트 `tests/` 또는 `test/`이며, 기존 파일이나 별도 사용자 설정 경로는 보존합니다. 결과의 projectConfig가 created이면 실제 폴더 구조에 맞게 고칩니다. 생산도 테스트도 아닌 소스(docs/conf.py, build.config.ts 등)가 있어 검사가 unclassifiedSource로 거부되면 그 모듈의 `excluded` 글롭 목록에 적습니다.
-6. Python 테스트가 외부 패키지를 쓰면 `--python-requirements requirements.txt`를 함께 줍니다. 이 경로는 **각 Python 모듈 기준**입니다. 검사기의 고정 Python으로 wheel만 `<모듈>/.sentinel-deps`에 설치하고 검사 때 PYTHONPATH에 올립니다. 이 폴더는 분석·변이 대상이 아니므로 `.gitignore`에 넣습니다. 캐시에 없으면 공식 인덱스에서 내려받으며, 목록에 지문이 없으면 지문 검증도 없습니다.
-7. Maven 프로젝트는 `--java-dependencies`를 함께 줍니다. **각 Java 모듈의 `pom.xml`**에서 고정 JDK·Maven으로 `mvn test`를 온라인으로 한 번 실행해 `<모듈>/.sentinel-m2`에 의존성을 받습니다. 이후 검사는 이 폴더로 오프라인 실행됩니다. 폴더가 없으면 검사기의 잠긴 저장소만 사용하므로 외부 의존성이 있는 프로젝트는 실패할 수 있습니다. 이 폴더도 `.gitignore`에 넣습니다.
-
-## 원본 도구보다 kill 수가 적게 나오는 이유
-
-SENTINEL 은 변이를 잡은 테스트 실패가 단언(assert) 실패일 때만 killed 로 셉니다. 테스트가 예외(TypeError, NullPointerException 등)로 죽은 변이는 runtimeError 로 따로 세고 kill 비율에 넣지 않습니다. mutmut·Stryker·mutate4java 는 이 둘을 구분하지 않고 모두 killed 로 세므로, 같은 프로젝트를 원본 도구로 돌린 killed 수는 SENTINEL 의 killed 와 runtimeError 를 더한 값과 같습니다. 2026-09-13 에 공개 프로젝트 3개로 확인한 값은 다음과 같습니다(ItsDangerous 는 mutmut 3 이 인자를 None 으로 바꾸는 변이를 많이 만들어 runtimeError 가 많습니다).
-
-|프로젝트|SENTINEL killed + runtimeError|원본 도구 killed|
-|---|---|---|
-|ItsDangerous 2.2.0 (Python, 변이 567)|72 + 346 = 418|mutmut 418|
-|unjs/scule v1.3.0 (TypeScript, 변이 81)|74 + 1 = 75|Stryker 75|
-|Commons CLI 1.10.0 (Java, 변경 파일 1개, 변이 10)|5 + 5 = 10|mutate4java 10|
-
-## 변경분만 검사
-
-`check --changed`는 git 으로 변경된 파일만 검사 대상으로 넘깁니다. 기준은 `--changed-base`(기본 HEAD)와 작업 트리의 차이이며, 아직 추가하지 않은 새 파일도 포함하고 지운 파일은 제외합니다. 각 모듈에는 그 모듈 폴더 안의 변경 파일만 모듈 기준 상대 경로로 전달되고, 변경 파일이 하나도 없는 모듈은 도구를 실행하지 않고 `noChanges`(종료 0)로 표시합니다. 언어 도구는 전달받은 경로 중 생산 코드만 CRAP·변이 대상으로 삼고 테스트는 전체를 실행하며, 생산 코드 변경이 없어 실제 검사를 생략하면 어댑터도 `noChanges`로 응답하며 인증하지 않습니다. 프로젝트가 git 작업 트리가 아니거나 기준 ref가 없으면 종료 3으로 거부합니다.
-
-```bash
-# --changed = 기준 커밋 이후 바뀐 파일만; --changed-base main = 기준을 main 브랜치로
-.venv/bin/sentinel check --project . --changed --changed-base main --timeout-seconds 900 --format json
-```
-
-기준값은 정수 또는 소수점 두 자리까지의 문자열입니다. crapMax는 0보다 커야 하고 mutationMin은 0 이상 100 이하입니다. `check --crap-max 10`처럼 한 번만 다른 값으로 돌릴 수도 있습니다. 기준값은 검사 요청 JSON의 `gate` 항목으로 각 언어 도구에 전달되며, 통합 실행기는 판정하지 않습니다.
-
-## 통합 명령 설치
-
-Python 3.9 이상에서 실행하며 실행 중 추가 Python 패키지를 요구하지 않습니다. 프로세스 관리 기능은 Linux를 대상으로 검증합니다. 아래는 uv가 설치된 Linux 환경에서 이 저장소 폴더 안에만 설치하는 명령입니다. uv는 Python 설치 환경과 패키지를 관리하는 도구입니다. 패키지 빌드에는 setuptools가 필요하며 설치 시 내려받을 수 있습니다. 다른 언어 SDK는 설치하지 않습니다.
-
-```bash
-# uv venv = 독립 Python 설치 폴더 생성; --python = 사용할 실행기; .venv = 새 폴더
-uv venv --python /usr/bin/python3 .venv
-# uv pip install = 패키지 설치; --python = 설치 대상 Python; 마지막 . = 현재 저장소
-# --link-mode=copy = 캐시와 설치 폴더가 다른 디스크여도 파일을 복사해 설치
-uv pip install --python .venv/bin/python --link-mode=copy .
-# .venv/bin/sentinel = 방금 설치한 명령; --help = 사용법; --version = 버전
-.venv/bin/sentinel --help
-.venv/bin/sentinel --version
-```
-
-아직 없는 .venv 폴더에서 처음 설치하는 예시입니다. 이미 같은 이름의 폴더가 있으면 다른 새 폴더 이름을 사용하고, 아래 실행 경로도 그 이름에 맞춥니다. 이 설치는 Codex·Claude Code의 설정이나 시스템 전체 명령을 변경하지 않습니다.
-
-## 검사 범위 설정
-
-검사할 프로젝트의 sentinel.workspace.json에 다음 필드를 둡니다. 파일 형식은 JSON이며 중복 필드와 알 수 없는 필드는 거부합니다.
-
-|위치와 필드|넣을 값|
+| 구성 | 역할 |
 |---|---|
-|최상위 schemaVersion|고정 문자열 sentinel-workspace-v1|
-|최상위 modules|1개 이상 128개 이하의 모듈 목록|
-|최상위 gate|선택 항목. crapMax(기본 "8")와 mutationMin(기본 "100") 문자열|
-|모듈 id|영문자로 시작하는 영숫자·밑줄·하이픈 식별자, 최대 64자|
-|모듈 language|python, typescript, java 중 하나|
-|모듈 root|프로젝트 기준 상대 폴더 경로. 프로젝트 자체는 점 한 개로 지정한다.|
-|모듈 toolVersion|해당 도구 묶음의 정확한 버전. 예시: 1.2.3. 실제 배포 버전과 일치해야 한다.|
-|모듈 toolDigest|해당 묶음의 sentinel-tool.json 원본 파일 SHA-256, 소문자 64자리|
-|모듈 config|선택 항목. 해당 모듈 안에 있는 언어별 설정 파일의 상대 경로|
+| Python 3.9+ 통합 실행기 | 설치 파일 확인, 검사기 호출, 실행 시간·자식 프로세스 관리, 결과 집계. 실행 중 추가 Python 패키지 의존성 없음 |
+| Python 검사기 | coverage.py와 mutmut을 사용하는 검사 경로 |
+| TypeScript 검사기 | Vitest·Istanbul과 Stryker를 사용하는 검사 경로 |
+| Java 검사기 | Maven·JaCoCo와 mutate4java를 사용하는 검사 경로 |
+| Claude Code·Codex 플러그인 | 두 AI 도구가 같은 사용 지침을 읽고 SENTINEL 실행기를 호출 |
+| GitHub Actions·승인 목록 | 언어 검사기의 CI 결과와 실행 파일 지문을 확인해 승인된 버전을 관리 |
 
-SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도 내용이 다르면 다른 지문으로 구분합니다. 기존 SENTINEL_PY 등의 소스 폴더를 그대로 설치할 도구 묶음으로 지정할 수는 없습니다. 아래의 별도 묶음 형식이 필요합니다. 테스트에 쓰는 모의 도구는 공통 호출 계약만 시험하며 언어 품질 검사를 대신하지 않습니다.
+## 사용 가이드
 
-모듈의 폴더가 서로 같거나 포함 관계이면 거부합니다. 설정 경로의 탈출, 심볼릭 링크와 특수 파일도 허용하지 않습니다. 선택 옵션을 주지 않으면 등록된 모듈 전체를 선택합니다. 같은 선택 옵션을 반복할 수 있지만 언어 선택과 모듈 선택은 한 호출에 섞지 않습니다.
+설치할 대상을 먼저 구분하면 명령이 헷갈리지 않습니다.
 
-```bash
-# plan = 실행 범위 확인; --project . = 현재 프로젝트; --format json = 구조화된 결과
-.venv/bin/sentinel plan --project . --format json
-# --language python = 등록된 모듈 중 Python만 선택
-.venv/bin/sentinel plan --project . --language python --format json
-# doctor = 설치 지문 확인. 검사기와 프로젝트 테스트는 실행하지 않음
-.venv/bin/sentinel doctor --project . --format json
-# check = 검사 요청(승인된 묶음만 실행); --timeout-seconds 7200 = 모듈당 실행 제한 7200초(생략하면 언어 도구 3600초, 최대 86400초)
-.venv/bin/sentinel check --project . --timeout-seconds 7200 --format json
-# --experimental = 승인되지 않은 묶음도 실행(결과는 인증되지 않음)
-.venv/bin/sentinel check --project . --experimental --format json
-```
+| 대상 | 설치하는 이유 | 설치 시점 |
+|---|---|---|
+| Claude Code 또는 Codex | AI에게 작업을 요청하기 위해 | 사용할 컴퓨터에서 처음 한 번 |
+| SENTINEL 플러그인 | AI에게 SENTINEL 사용법을 알려 주기 위해 | 사용할 AI 도구마다 한 번 |
+| SENTINEL 실행기와 언어 도구 | 실제 품질 검사를 수행하기 위해 | 실행기는 한 번, 언어 도구는 필요한 언어를 추가할 때 |
 
-위 명령은 프로젝트와 이 패키지의 설치 위치가 같은 폴더라는 예시입니다. 다른 프로젝트에서는 설치한 sentinel 명령의 경로를 사용하고 --project에 검사할 폴더를 지정합니다. --config는 프로젝트 기준 workspace 설정 경로, --tools는 언어 도구를 보관한 폴더이며 생략 시 프로젝트 아래 .sentinel-tools를 사용합니다.
+플러그인은 실행기·SDK를 포함하지 않습니다. **플러그인을 설치했어도 2~5단계가 필요합니다.** AI 없이 터미널에서만 쓸 분은 1단계와 6단계를 건너뛰면 됩니다.
 
-## 언어 도구 묶음의 제작·설치 계약
+<a id="step-0"></a>
 
-언어별 저장소에서 실행 파일과 결과 변환 코드를 만들고 아래 묶음 설정 문서(manifest)를 함께 배포합니다. 이름은 sentinel-tool.json이고 형식은 JSON입니다. 통합 실행기 안에 언어별 변이 규칙을 복사하지 않습니다.
+### 0. 실행 환경 확인
 
-|묶음 설정 필드|내용|
+| 운영체제 | 실제 검사를 실행할 곳 |
 |---|---|
-|schemaVersion|sentinel-tool-bundle-v1|
-|protocolVersion|sentinel-tool-protocol-v1|
-|language|지원하는 언어 이름 하나|
-|version|이 묶음의 정확한 버전|
-|entrypoint|실행 파일의 상대 경로|
-|files|상대 파일 경로를 키로, 각 파일의 SHA-256을 값으로 가진 완전한 목록|
+| Linux | Linux 터미널. 실제 통합 검증 환경은 Ubuntu x86_64 |
+| Windows | WSL2의 Ubuntu. Windows의 Claude Code·Codex에서 이 환경을 호출할 수 있음 |
+| macOS | 현재 통합 설치 미지원. Linux의 `renameat2` 기능이 필요함 |
 
-entrypoint도 files에 포함하며 manifest 자체는 제외합니다. 미기재 파일, 파일 내용 불일치, 링크·특수 파일과 구성요소가 256개를 넘는 과도하게 깊은 상대 경로는 거부합니다. 최대 파일 4,096개, 파일당 16 MiB, 전체 64 MiB인 작은 실행 연결용 묶음입니다. Java SDK처럼 큰 언어 실행 환경 전체를 여기에 넣는 설계가 아닙니다.
+준비물은 인터넷 연결, Git, Linux 쪽 Python 3.9 이상과 가상환경 생성 기능입니다. 검사할 프로젝트에는 소스와 실행 가능한 테스트가 있어야 합니다. AI로 요청하려면 해당 AI 도구의 설치·로그인도 마칩니다.
 
-제작자는 manifest의 원본 지문을 별도로 제공해야 합니다. 사용자는 신뢰한 로컬 묶음 폴더를 install의 --bundle에, 그 지문을 --sha256에, 보관 폴더를 --tools에 지정합니다. 묶음과 보관 폴더 경로에는 상위 폴더로 이동하는 두 점을 넣지 않고 명확한 경로나 절대 경로를 사용합니다. 설치 주소는 보관 폴더/언어/버전/지문입니다. 기존 설치는 덮어쓰지 않으며 새 버전은 나란히 보관합니다. 이전 버전으로 되돌릴 때는 workspace의 버전과 지문을 이전 설치에 맞춥니다. 자동 업데이트·원격 패키지 검색·SDK 다운로드는 하지 않습니다.
+**Windows PowerShell에서** WSL 상태를 확인합니다.
 
-원자 설치, 즉 검증이 끝난 묶음을 한 번에 게시하면서 기존 대상을 덮어쓰지 않는 동작은 Linux의 renameat2 기능을 사용합니다. 지원하지 않는 환경에서는 설치를 거부하며 덮어쓰는 방식으로 자동 전환하지 않습니다. 새 설치 디렉터리는 소유자만 접근하도록 만들고, 기존 사용자 폴더의 권한을 임의로 바꾸지 않습니다.
-
-처음 확인한 뒤 원본 파일이 바뀔 수 있으므로 복사할 때도 파일별 지문과 누적 크기를 쓰기 전에 다시 확인합니다. 바뀐 내용을 발견하면 설치를 중단하고 기존 설치는 유지합니다.
-
-일반 실행 파일 형식의 실험 실행에서 도구는 표준 입력으로 JSON 요청 하나를 받고, 표준 출력으로 JSON 응답 하나를 내보냅니다. 요청에는 protocolVersion, 새 requestId, command(check), moduleId, language, projectRoot(선택 모듈의 절대 경로), config(설정 파일 절대 경로 또는 null), gate(crapMax·mutationMin 문자열)가 있고, `check --changed`일 때만 changedFiles(모듈 기준 상대 경로 목록)가 붙습니다. 작업 디렉터리도 선택한 모듈입니다. 응답은 protocolVersion, requestId, command, moduleId, language, toolVersion, status, exitCode, passed만 허용하며 요청과 도구의 신원이 일치해야 합니다. stdout에 로그를 섞으면 계약 위반입니다.
-
-## 결과 해석과 안전 경계
-
-공통 결과의 selection이 allConfigured이면 등록 모듈 전체, partial이면 일부만 대상으로 했습니다. moduleCount는 그 개수입니다. results에는 모듈 식별자, 언어, 관측 상태, 관측 종료 코드와 해당하는 경우 승인 여부(admitted)를 담습니다. 원본 로그나 경로는 싣지 않습니다.
-
-plan·doctor의 pass는 각각 범위 확인·설치 확인의 성공일 뿐입니다. doctor의 `admitted`는 묶음이 승인 목록에 있는지 알려 줍니다. 기본 check는 선택한 모든 모듈이 승인됐고 **실제로 검사되어 `passed`**일 때만 certified=true입니다. `--changed`에서 하나라도 `noChanges`이면 정상 종료(pass=true, 종료 0)할 수 있지만 certified=false이며, 검사하지 않은 코드를 품질 통과로 표시하면 안 됩니다. 부분 선택의 인증은 그 선택 범위에만 적용됩니다. 승인되지 않은 모듈은 실행하지 않고 backendNotAdmitted(6), certified=false입니다. `--experimental`은 언제나 certified=false이며 모두 passed여도 종료 6입니다.
-
-## 승인 목록(admission.json)
-
-승인 목록은 `src/sentinel/admission.json`이며 패키지와 함께 배포됩니다. 항목 하나는 언어, 어댑터 버전(`sentinel-tool/version`), 어댑터 실행 파일(`sentinel-tool/sentinel-tool`)의 SHA-256, 그 파일을 읽은 저장소와 commit, 그 commit 에서 성공한 CI 실행 주소, 승인 날짜로 이루어집니다. 검사 때는 설치된 묶음의 매니페스트에 적힌 실행 파일 지문을 이 목록과 맞춰 볼 뿐이라 네트워크가 필요 없습니다. 어댑터 실행 파일이 바뀌면 지문이 달라져 다시 승인해야 하고, 검사기 내부만 바뀌면 어댑터의 `version`을 올려 새 항목을 만드는 것이 규칙입니다.
-
-항목은 `scripts/admission.py`로 다룹니다. `add`는 GitHub에서 그 commit 의 `ci` 워크플로가 main 에서 성공했는지 확인하고 버전·지문을 읽어 항목을 씁니다. `verify`는 모든 항목을 GitHub 와 다시 대조하고, `lint`는 네트워크 없이 형식과 중복을 검사합니다. 이 저장소의 CI 는 `lint`와 `verify`를 매번 돌립니다. 언어 저장소가 공개라서 워크플로의 기본 토큰으로 읽을 수 있습니다.
-
-```bash
-# add = 항목 추가; --language = 언어; --commit = CI 를 통과한 언어 저장소의 commit(main)
-python3 scripts/admission.py add --language python --commit <commit>
-# verify = 모든 항목을 GitHub 와 대조; lint = 형식·중복 검사(오프라인)
-python3 scripts/admission.py verify
-python3 scripts/admission.py lint
+```powershell
+# 설치된 Linux 배포판과 WSL 버전을 확인합니다.
+wsl --list --verbose
 ```
 
-`--admission <파일>`을 doctor·check 에 주면 패키지의 목록 대신 그 파일을 씁니다. 조직이 자체 승인 목록을 운영할 때 씁니다.
+`Ubuntu` 행의 `VERSION`이 `2`인지 확인하세요. WSL이 없다면 **관리자 PowerShell에서** 아래 명령으로 설치하고 재부팅·Ubuntu 사용자 생성을 마칩니다. 기존 배포판이 있다면 재설치하지 말고 [Microsoft 안내](https://learn.microsoft.com/en-us/windows/wsl/install)를 따르세요.
 
-### 승인된 도구 버전 갱신
-
-미검사 인증 오류를 고친 버전은 Python·TypeScript 0.1.2, Java 0.1.3입니다. 이전 버전의 승인 항목은 은퇴하므로 예전 묶음은 기본 check에서 `backendNotAdmitted`로 거부됩니다. 이전 설치 파일은 그대로 남습니다. 새 승인 목록을 포함한 통합 CLI를 재설치하고, 선택한 언어 도구도 새 버전으로 설정해야 합니다.
-
-setup은 기존 언어 소스를 자동으로 갱신하지 않습니다. 최신 소스를 따로 준비하거나, 아직 없는 새 폴더를 `--sources`로 지정하면 최신 저장소를 복제합니다. 아래는 Python 모듈이 이미 등록된 프로젝트를 갱신하는 예시입니다. 기존 모듈 폴더·설정·품질 기준은 유지됩니다. 기존에 `--config`나 `--tools`로 별도 경로를 지정했다면 갱신할 때도 같은 옵션과 경로를 지정합니다. 프로젝트 의존성 준비가 필요한 경우 기존에 사용한 관련 옵션도 함께 지정합니다.
-
-```bash
-# 최신 SENTINEL 저장소에서 실행. --reinstall = 현재 소스로 CLI 재설치
-uv pip install --python .venv/bin/python --reinstall .
-# --sources = 새 언어 소스를 받을 폴더. --project는 기존 검사 프로젝트의 Linux 경로
-.venv/bin/sentinel setup --project "<프로젝트 경로>" --language python --sources "$HOME/.sentinel/sources-20260916"
+```powershell
+# Ubuntu를 포함한 WSL을 설치합니다. 이미 준비되어 있으면 실행하지 않습니다.
+wsl --install -d Ubuntu
 ```
 
-도구의 실제 실패 상태는 toolError=1, qualityFailed=2, usageConfigError=3, baselineFailed=4, dependencyError=5, backendError=6, evidenceError=7, cancelled=8로 구분합니다. 여러 실패가 섞이면 7,1,5,6,8,4,3,2 순서로 전체 종료 코드를 정합니다. 설치 누락이나 손상이 발견되면 선택한 도구를 하나도 실행하지 않습니다.
+각 단계에서 **명령을 입력할 곳**을 확인하세요. PowerShell은 Windows의 AI 플러그인 설치, Ubuntu/Linux 터미널은 실행기 설치와 검사, AI 대화창은 자연어 요청에 사용합니다.
 
-취소와 자식 프로세스 정리 실패가 겹치면 해당 모듈은 backendError=6으로 남기고, 아직 시작하지 않은 모듈은 cancelled=8로 표시합니다. 이후 도구는 실행하지 않습니다. 명령의 출력 통로가 닫혔거나 사용할 수 없으면 내부 예외 대신 종료 코드 3으로 끝냅니다.
+<a id="step-1"></a>
 
-일반 실행 파일 형식에는 실행 시간과 합계 1 MiB 출력 제한, 최소 환경 변수, 프로세스 그룹 정리를 적용합니다. 이것만으로 파일·네트워크·자원을 강제로 격리하지는 못합니다. 지문 일치도 제작자의 신뢰나 악성 코드 부재를 증명하지 않습니다.
+### 1. AI 플러그인 설치
 
-## 개발자 참고
+**SENTINEL 저장소를 미리 `git clone`할 필요는 없습니다.** `marketplace add`로 GitHub의 설치 목록을 등록한 뒤, Claude Code의 `plugin install` 또는 Codex의 `plugin add`로 플러그인을 설치합니다. 원하는 AI 도구만 선택하세요. 둘 다 쓰면 각각 설치합니다.
 
-실행기의 내부 함수·격리 설정·과거 시험 이력은 [개발자 참고](docs/references/sentinel-execution-api.md)에 있습니다. 실제 프로젝트 관측과 한계는 [세 언어 비교 기록](docs/references/sentinel-original-tool-comparison.md)에서 확인합니다. 두 호스트가 공유하는 한글 검사 지침과 기본 프롬프트는 [플러그인 안내](plugins/sentinel/README.md)에 연결돼 있습니다. 이 저장소 자체가 마켓플레이스입니다. Claude Code는 `claude plugin marketplace add hwain-ai/SENTINEL` 뒤 `claude plugin install sentinel@sentinel`, Codex는 `codex plugin marketplace add hwain-ai/SENTINEL` 뒤 `codex plugin add sentinel@sentinel`로 설치합니다. 플러그인은 지침만 담으므로 sentinel 명령과 setup은 따로 실행해야 합니다.
+**Windows PowerShell에서 Claude Code를 사용할 때:**
 
-## 검증 범위와 확장
+```powershell
+# 먼저 Claude Code 명령과 플러그인 기능이 있는지 확인합니다.
+claude --version
+claude plugin --help
 
-두 호스트의 실제 설치·스킬 발견·기본 호출과 세 언어의 성공·실패·미검사·누락·취소 시험을 완료했습니다. 결과와 환경별 한계는 [호스트·WSL 검증 기록](docs/references/sentinel-host-validation.md)에서 관리합니다. 더 큰 사용자 프로젝트와 다른 Linux CPU·커널 조합은 별도 검증 범위입니다. 플러그인은 동일 sentinel 명령을 호출하며 별도 품질 판정을 하지 않습니다.
+# 설치 목록 등록 후 플러그인을 설치합니다.
+claude plugin marketplace add hwain-ai/SENTINEL
+claude plugin install sentinel@sentinel
+```
 
-각 언어는 원래 빌드·품질 결과·원본 보호·중단 뒤 정리가 확인된 범위만 지원 대상으로 기록합니다. 단위·프로세스 테스트 통과를 실제 호스트 검증 대신 사용하지 않습니다. 기존 언어별 검사 도구의 기본값과 잠금 버전은 유지합니다.
+**Windows PowerShell에서 Codex를 사용할 때:**
+
+```powershell
+# 먼저 Codex 명령과 플러그인 기능이 있는지 확인합니다.
+codex --version
+codex plugin --help
+
+# 설치 목록 등록 후 플러그인을 설치합니다.
+codex plugin marketplace add hwain-ai/SENTINEL
+codex plugin add sentinel@sentinel
+```
+
+Linux에서 AI 도구를 쓰는 경우에도 같은 명령을 Linux 터미널에 입력합니다. `sentinel@sentinel`에는 역슬래시를 넣지 않습니다. Claude Code의 `--scope user`는 기본 설치 범위이므로 생략해도 사용자 전체 범위로 설치됩니다.
+
+**확인:** 설치 명령이 성공하면 해당 AI 도구에서 새 대화를 열어 SENTINEL 스킬을 확인합니다. 아직 실제 품질 검사는 하지 않은 상태입니다. 명령이 인식되지 않으면 [명령을 찾을 수 없을 때](#command-not-found)를 먼저 해결하세요. [Claude Code 설치 목록 안내](https://code.claude.com/docs/en/discover-plugins)
+
+<a id="step-2"></a>
+<a id="통합-명령-설치"></a>
+
+### 2. SENTINEL 실행기 설치
+
+**Ubuntu/Linux 터미널에서 실행합니다.** Windows PowerShell에 아래 Bash 명령을 그대로 붙여 넣지 마세요. Windows에서는 시작 메뉴의 Ubuntu를 열거나 PowerShell에서 `wsl -d Ubuntu`로 들어갑니다.
+
+Ubuntu에서 Git·Python·가상환경 기능이 없다면 준비합니다. 다른 Linux 배포판은 해당 배포판의 패키지 관리자를 사용합니다.
+
+```bash
+# Ubuntu 패키지 목록을 갱신하고 설치에 필요한 도구를 준비합니다.
+sudo apt update
+sudo apt install -y git python3 python3-venv
+```
+
+다음은 **아직 설치 폴더가 없는 새 설치**의 명령입니다. 같은 경로가 이미 있다면 덮어쓰거나 삭제하지 말고 [갱신 절차](#승인된-도구-버전-갱신)를 확인하세요.
+
+```bash
+# 실행기를 둘 사용자 전용 폴더를 만듭니다. HOME은 Linux 사용자 홈입니다.
+mkdir -p "$HOME/.local/share/sentinel"
+
+# 이 단계는 플러그인이 아니라 실제 실행기 소스를 받습니다. LF 줄바꿈을 유지합니다.
+git clone --depth 1 --config core.autocrlf=false https://github.com/hwain-ai/SENTINEL.git "$HOME/.local/share/sentinel/SENTINEL"
+cd "$HOME/.local/share/sentinel/SENTINEL"
+
+# 시스템 Python과 분리된 가상환경을 만들고, 현재 폴더의 실행기를 설치합니다.
+python3 -m venv .venv
+.venv/bin/python -m pip install .
+
+# 설치한 실행 파일의 절대 경로를 저장합니다.
+SENTINEL_EXECUTABLE="$HOME/.local/share/sentinel/SENTINEL/.venv/bin/sentinel"
+"$SENTINEL_EXECUTABLE" --version
+```
+
+**확인:** 현재 배포 버전은 `0.1.0`입니다. 설치 시 빌드에 필요한 setuptools를 내려받을 수 있습니다. 이 단계에서는 다른 언어의 SDK나 검사기를 아직 설치하지 않습니다.
+
+이 가이드는 `sentinel`을 시스템 PATH에 추가하는 대신 실행 파일의 경로를 사용합니다. 따라서 실행기 폴더로 매번 이동할 필요가 없습니다. 새 Ubuntu/Linux 터미널을 열면 `SENTINEL_EXECUTABLE=...` 줄을 다시 실행하세요.
+
+<a id="step-3"></a>
+
+### 3. 검사할 프로젝트 지정
+
+**Ubuntu/Linux 터미널에서**, 실행기 저장소가 아닌 **검사하려는 프로젝트**로 이동합니다. 아래 경로는 예시이므로 실제 프로젝트 경로로 바꿉니다. **`cd`가 실패하면 멈추고 경로부터 고치세요.**
+
+```bash
+# 예시 경로를 검사할 프로젝트의 실제 경로로 바꿉니다.
+cd "$HOME/projects/my-app"
+
+# 현재 프로젝트의 절대 경로와 언어 도구 보관 위치를 저장합니다.
+SENTINEL_PROJECT="$(pwd -P)"
+SENTINEL_TOOLS="$HOME/.local/share/sentinel/tools"
+
+# 표시된 프로젝트가 검사하려는 폴더인지 확인합니다.
+printf '프로젝트: %s\n실행기: %s\n도구: %s\n' "$SENTINEL_PROJECT" "$SENTINEL_EXECUTABLE" "$SENTINEL_TOOLS"
+```
+
+이 가이드는 언어 도구를 WSL/Linux 사용자 홈에 보관합니다. 아래 `setup`·`plan`·`doctor`·`check`에서 **같은 `--tools` 경로를 계속 사용**하세요. 이 옵션을 생략하면 기본값은 프로젝트 아래의 `.sentinel-tools/`입니다.
+
+**프로젝트가 Windows 드라이브에 있다면:** WSL은 Windows 폴더를 `/mnt/c/...` 같은 경로로 읽을 수 있습니다. 다음 명령은 경로를 바꿔 표시할 뿐, 프로젝트를 이동하거나 복사하지 않습니다.
+
+```bash
+# Windows 경로는 예시입니다. 실제 경로로 바꾸고 Ubuntu 터미널에서 실행합니다.
+SENTINEL_PROJECT="$(wslpath -u 'C:\work\my-app')"
+# 실제 폴더가 있는지 확인합니다. 오류가 나면 다음 단계로 넘어가지 않습니다.
+ls -ld "$SENTINEL_PROJECT"
+```
+
+**Windows 폴더를 읽을 수 있다는 사실이 SENTINEL 검사의 정상 완료를 보장하지는 않습니다.** 원본 쪽 설정·기록 저장에는 파일 권한과 파일시스템 조건도 적용됩니다. 현재 전체 검증은 WSL 내부 프로젝트에서 수행했으며, `/mnt/c` 프로젝트의 처음부터 끝까지 실행은 별도 검증 범위입니다. 처음 사용한다면 WSL 내부 프로젝트에서 시작하는 경로를 권장합니다. [Windows·Linux 파일 접근과 성능](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
+
+<a id="step-4"></a>
+<a id="첫-실행-설정"></a>
+
+### 4. 프로젝트 최초 설정
+
+**Ubuntu/Linux 터미널에서** 언어 도구 설치와 프로젝트 설정을 한 번 실행합니다. `setup`은 실행기 설치와 다른 단계입니다. **실제로 검사할 언어를 반드시 지정**하세요. 생략하면 세 언어가 모두 선택됩니다.
+
+아래는 **Python 프로젝트 하나를 처음 등록하는 예시**입니다. TypeScript 프로젝트는 `--language typescript`로 바꿉니다. Maven Java 프로젝트는 `--language java --java-dependencies`를 사용합니다. Java의 이 옵션은 프로젝트의 시험 빌드를 실행하고 의존 패키지를 내려받습니다.
+
+```bash
+# setup = 최초 설정; --project = 검사할 폴더; --tools = 언어 도구 보관 폴더
+# --crap-max 8 = 복잡도·테스트 범위 점수 상한; --mutation-min 100 = 변이 탐지 비율 100%
+# --format json = 구조화된 결과 출력
+"$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --crap-max 8 --mutation-min 100 --format json
+```
+
+Python 테스트가 외부 패키지를 사용하면 위 명령에 `--python-requirements requirements.txt`를 추가합니다. 파일 경로는 **해당 Python 모듈 기준**입니다. TypeScript의 프로젝트별 패키지·빌드 방식이 검사기의 실행 환경과 맞는지도 확인해야 합니다. 지원 언어라고 해서 모든 프레임워크와 기존 빌드 방식이 자동 지원되는 것은 아닙니다.
+
+`setup`은 필요한 언어 저장소를 `~/.sentinel/sources/`에 받고, 버전·다운로드 지문이 기록된 SDK와 검사기를 준비합니다. 세 언어를 모두 준비하면 약 2GB를 내려받을 수 있습니다. 이미 받은 언어 소스를 자동으로 최신화하지는 않습니다.
+
+**확인:** 정상 종료 후 프로젝트에 `sentinel.workspace.json`이 만들어졌는지 확인합니다. Python·TypeScript에는 모듈별 `sentinel.config.json`도 생깁니다. 새 설정의 기본 폴더가 실제 프로젝트와 일치해야 합니다.
+
+| 언어 | 기본 소스 | 기본 테스트 | 확인할 내용 |
+|---|---|---|---|
+| Python | `src/**/*.py` | `tests/`의 `test_*.py` | 소스·테스트 위치와 외부 패키지 |
+| TypeScript | `src/**/*.ts` | `test/`의 `*.test.ts` | 소스·테스트 위치와 Vitest 실행 조건 |
+| Java | Maven의 Java 소스 | Maven 테스트 | 해당 모듈의 `pom.xml`과 의존 패키지 |
+
+기본값이 다르면 **첫 검사 전에 설정을 맞춥니다.** 설정 파일 형식과 제외 범위는 [상세 설정](docs/references/sentinel-cli-reference.md#검사-범위-설정)을 참고하세요.
+
+<details>
+<summary>Python 서버와 TypeScript 화면처럼 여러 언어가 함께 있다면</summary>
+
+프로젝트 안에 `api/`와 `web/`가 이미 있는 예시입니다. 실제 폴더명으로 바꾸세요. `--module-root`는 검사 폴더를 지정하며, 두 폴더는 같거나 서로 포함 관계일 수 없습니다.
+
+```bash
+# 같은 프로젝트 아래 api는 Python, web은 TypeScript로 각각 등록합니다.
+"$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --language typescript --module-root python=api --module-root typescript=web --crap-max 8 --mutation-min 100 --format json
+```
+
+이미 등록된 모듈의 폴더와 기준은 유지됩니다. 언어를 추가할 때도 새 언어의 폴더를 명시합니다. 여러 모듈을 전부 `.`으로 지정하면 거부됩니다.
+
+</details>
+
+<a id="step-5"></a>
+
+### 5. 첫 검사와 결과 확인
+
+**Ubuntu/Linux 터미널에서** 세 명령을 순서대로 실행합니다. 앞 단계에서 지정한 세 경로 변수를 계속 사용합니다.
+
+```bash
+# 1. 등록된 검사 대상을 확인합니다. 테스트를 실행하지 않습니다.
+"$SENTINEL_EXECUTABLE" plan --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --format json
+
+# 2. 설치 파일의 버전·지문·승인 여부를 확인합니다. 테스트나 SDK 동작 시험은 아닙니다.
+"$SENTINEL_EXECUTABLE" doctor --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --format json
+
+# 3. 실제 품질 검사를 실행합니다. 등록된 모듈의 범위가 대상입니다.
+"$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --format json
+```
+
+`plan`의 범위가 맞고 `doctor`에서 선택한 모듈이 `ready`, `admitted=true`인지 확인한 뒤 `check`로 진행하세요. `doctor`가 성공해도 실제 빌드·테스트는 실패할 수 있습니다. 변이 검사는 프로젝트 크기에 따라 수분에서 수시간이 걸릴 수 있으며 기본 실행 제한은 모듈당 3,600초입니다.
+
+| 결과 | 사용자가 이해할 의미 | 품질 통과인가? |
+|---|---|---|
+| `planned` | 검사할 범위를 읽었음 | 아직 검사하지 않음 |
+| `ready` | 설치 파일 확인을 마침 | 아직 검사하지 않음 |
+| `passed`, `certified=true` | 승인된 도구로 선택 범위를 실제 검사해 기준을 충족 | 해당 선택 범위에서 통과 |
+| `qualityFailed` | 검사를 수행했지만 품질 기준에 미달 | 실패 |
+| `noChanges`, `certified=false` | 검사할 변경 코드가 없어 생략 | 미검사 |
+| `baselineFailed` | 원래 테스트부터 실패해 검사 조건이 안 됨 | 실패 원인부터 확인 |
+| `dependencyError` | 필요한 설치 파일이나 실행 의존성이 부족함 | 검사 준비 필요 |
+| `backendNotAdmitted` | 현재 도구가 승인 목록에 없어 실행하지 않음 | 승인된 버전으로 갱신 필요 |
+
+`exitCode=0`이나 `pass=true`만 보고 품질 통과로 판단하지 마세요. `check`의 모듈별 `status`, 전체 `certified`, 선택 범위를 함께 확인합니다. 일부 모듈·변경 코드의 통과를 전체 프로젝트의 통과로 확대하지 않습니다.
+
+<a id="step-6"></a>
+
+### 6. AI 대화창에서 검사 요청
+
+이제 **Claude Code 또는 Codex의 대화창**에서 요청합니다. 2~4단계를 마쳤다면 같은 설치를 다시 할 필요가 없습니다. 실행기만 설치된 상태라면 플러그인에 프로젝트 최초 설정부터 요청할 수도 있습니다.
+
+먼저 Ubuntu/Linux 터미널에서 실제 경로를 확인합니다. AI가 이 셸 변수의 값을 자동으로 아는 것은 아닙니다.
+
+```bash
+# 출력된 경로를 아래 요청문에 넣습니다.
+printf '실행기: %s\n프로젝트: %s\n언어 도구: %s\n' "$SENTINEL_EXECUTABLE" "$SENTINEL_PROJECT" "$SENTINEL_TOOLS"
+```
+
+다음 요청문의 `<...>`를 실제 값으로 바꾸어 입력하세요. Linux에서 직접 실행한다면 실행 환경을 Linux로 적고 WSL 배포판 항목은 생략합니다.
+
+```text
+SENTINEL 스킬로 이 프로젝트의 설치 상태를 진단해 줘.
+
+실행 환경: Windows의 WSL2
+WSL 배포판: Ubuntu
+신뢰하고 사용할 SENTINEL 실행 파일: <위에서 출력한 실행기 절대 경로>
+검사할 프로젝트: <위에서 출력한 프로젝트 절대 경로>
+언어 도구 폴더: <위에서 출력한 언어 도구 절대 경로>
+
+이번에는 doctor로 설치 상태만 확인하고 결과를 설명해 줘.
+```
+
+설치 상태를 확인한 뒤 같은 대화에서 아래처럼 요청합니다.
+
+| 하고 싶은 일 | 대화창에 입력할 요청 |
+|---|---|
+| 최초 설정 | `이 경로의 프로젝트에 Python 검사 환경을 setup으로 준비해 줘. CRAP 상한은 8, 변이 탐지 비율은 100%로 설정해 줘.` |
+| 검사 범위 확인 | `같은 프로젝트의 검사 범위를 SENTINEL plan으로 확인해 줘.` |
+| 전체 등록 모듈 검사 | `같은 프로젝트의 등록된 모든 모듈에 기본 품질 검사를 실행해 줘.` |
+| 수정한 코드 검사 | `같은 프로젝트에서 HEAD 이후 변경한 코드만 검사해 줘.` |
+
+최초 설정 요청의 언어·폴더는 실제 프로젝트에 맞게 바꿉니다. CLI가 없거나 신뢰할 실행 경로를 확인할 수 없으면 현재 플러그인은 중단합니다. 그때는 [2단계](#step-2)부터 준비해야 합니다. 새 대화에는 위 경로 정보를 다시 알려 주세요.
+
+## 검사는 어디에서 실행되나요?
+
+**검사기가 임시 복사본을 만들고 그 안에서 테스트와 변이 검사를 실행합니다.** 사용자가 검사할 때마다 프로젝트를 수동으로 복사할 필요는 없습니다.
+
+```mermaid
+flowchart LR
+    A["원본 프로젝트<br/>소스·테스트 읽기"] --> B["검사기가<br/>임시 복사본 생성"]
+    B --> C["복사본에서<br/>테스트·품질 검사"]
+    C --> D["결과 수집<br/>임시 복사본 정리"]
+```
+
+Windows에서 WSL 검사기를 쓰면 기본 임시 폴더는 WSL 쪽에 만들어집니다. 실제 위치는 임시 폴더 환경 설정에 따라 달라집니다. Python은 커버리지와 변이 검사에 각각 복사본을 만들고, TypeScript와 Java도 임시 복사본을 사용합니다. `.git`이나 기존 빌드 결과 등은 언어별 규칙에 따라 복사에서 제외합니다. 정상적인 정리 경로에서 복사본을 삭제하며, 강제 종료 뒤까지 정리를 보장하는 뜻은 아닙니다.
+
+원본 프로젝트에도 **설정·상태 파일**이 생길 수 있습니다. 검사 복사본과 용도가 다릅니다.
+
+| 위치 | 내용 |
+|---|---|
+| 원본의 `sentinel.workspace.json` | 등록한 모듈과 품질 기준 |
+| 각 Python·TypeScript 모듈의 `sentinel.config.json` | 소스·테스트 위치 등 언어별 설정 |
+| 일부 검사기의 원본 `.sentinel/` | 결과·상태 기록 |
+| 원본 `.sentinel-deps/`, `.sentinel-m2/` | 옵션으로 준비한 Python·Maven 의존 패키지 |
+| 이 가이드의 `~/.local/share/sentinel/tools/` | 언어 도구 묶음. `--tools` 생략 시 원본 `.sentinel-tools/`가 기본값 |
+| WSL/Linux 임시 폴더 | 실제 빌드·테스트·변이 검사를 수행하는 복사본 |
+
+생성되는 상태·도구·의존 패키지 폴더는 프로젝트의 `.gitignore`에 반영하세요. Maven의 **최초 의존성 준비**는 원본 모듈에서 시험 빌드를 실행하므로 `target/` 같은 빌드 결과도 생길 수 있습니다. 이는 복사본에서 실행하는 품질 검사 단계와 구분합니다. 임시 복사본을 쓴다고 파일·네트워크 접근을 강제 차단하는 보안 컨테이너가 되는 것은 아닙니다.
+
+## 자주 쓰는 명령
+
+아래는 **Ubuntu/Linux 터미널**용입니다. 새 터미널에서는 2~3단계의 `SENTINEL_EXECUTABLE`, `SENTINEL_PROJECT`, `SENTINEL_TOOLS`를 다시 지정합니다.
+
+```bash
+# HEAD 이후 바뀐 코드만 검사합니다. 프로젝트가 Git 저장소여야 합니다.
+"$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --changed --format json
+
+# 등록된 Python 모듈만 선택합니다.
+"$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --format json
+
+# 큰 프로젝트에서 모듈당 실행 제한을 7,200초로 지정합니다.
+"$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --timeout-seconds 7200 --format json
+```
+
+`--changed-base main`을 추가하면 기준을 `main`으로 바꿉니다. 해당 Git 참조가 실제로 있어야 합니다. 변경한 생산 코드를 검사 대상으로 선택해도 테스트는 전체 실행할 수 있으므로 반드시 빨리 끝난다는 뜻은 아닙니다. README만 바뀐 경우처럼 검사할 생산 코드가 없으면 `noChanges`가 될 수 있습니다.
+
+Windows PowerShell에서 직접 호출해야 한다면 다음 형식을 사용합니다. `<...>`는 확인한 실제 Linux 경로로 바꿉니다. 대화로 요청할 때는 플러그인이 이 호출을 구성합니다.
+
+```powershell
+# --exec 뒤에는 WSL 안의 실행 파일과 각 인자를 전달합니다.
+wsl.exe -d Ubuntu --exec "/home/<사용자>/.local/share/sentinel/SENTINEL/.venv/bin/sentinel" check --project "/home/<사용자>/projects/my-app" --tools "/home/<사용자>/.local/share/sentinel/tools" --format json
+```
+
+## 문제 해결
+
+<a id="command-not-found"></a>
+
+### PowerShell에서 codex 또는 claude 명령을 찾지 못합니다
+
+앱의 실행 파일이 있어도 외부 PowerShell의 **PATH(명령을 찾을 폴더 목록)**에 등록되지 않았을 수 있습니다. 먼저 사용할 도구의 명령을 확인합니다.
+
+```powershell
+# 사용할 도구의 실행 파일 위치가 나오는지 확인합니다.
+Get-Command codex
+# Claude Code를 사용할 때 확인합니다.
+Get-Command claude
+```
+
+찾지 못하면 [Codex CLI 공식 설치 안내](https://learn.chatgpt.com/docs/codex/cli) 또는 [Claude Code 공식 설치 안내](https://code.claude.com/docs/en/setup)에 따라 터미널용 실행기를 준비하고 **새 PowerShell 창**에서 `--version`을 확인하세요. 앱 내부에서 명령이 실행된다는 사실만으로 외부 터미널의 등록 상태를 판단하면 안 됩니다. 앱의 버전별 내부 경로를 다른 사용자 컴퓨터에 그대로 복사하지 않습니다.
+
+버전이 나와도 `plugin` 하위 명령이 없다면 해당 호스트를 플러그인 기능이 지원되는 버전으로 갱신한 뒤 `plugin --help`로 확인합니다. 실제 검증에 사용한 버전은 [호스트 검증 기록](docs/references/sentinel-host-validation.md)에 있습니다.
+
+### 설치 명령을 실행했는데 sentinel 명령은 없습니다
+
+`claude plugin install`과 `codex plugin add`는 플러그인 지침을 설치합니다. 실제 실행기는 [2단계](#step-2)에서 따로 설치하고 안내한 절대 경로로 실행합니다. 플러그인 설치만으로 시스템에 `sentinel` 명령이 등록되지는 않습니다.
+
+### 설정이나 검사가 실패합니다
+
+| 증상 | 확인할 것 |
+|---|---|
+| 마켓플레이스나 플러그인을 찾지 못함 | `marketplace add`가 성공했는지, `sentinel@sentinel`에 오타·역슬래시가 없는지 확인 |
+| 실행기 경로가 없다고 함 | WSL 안의 절대 경로와 배포판 이름을 전달했는지 확인 |
+| `nestedModuleRoots` 또는 폴더 지정 오류 | 언어별 `--module-root`가 서로 같거나 포함 관계인지 확인 |
+| `dependencyError` | `--tools`가 최초 설정과 같은지 확인. 필요한 언어와 의존 패키지를 `setup`으로 준비 |
+| `unclassifiedSource` | 소스·테스트 범위를 확인하고, 빌드 설정 파일 등 검사 대상이 아닌 파일만 명시적으로 제외 |
+| `baselineFailed` | 원래 테스트의 실패나 실행 환경 문제부터 해결 |
+| `backendNotAdmitted` | [실행기와 언어 도구 갱신](#승인된-도구-버전-갱신). 우회 실행을 정식 통과로 취급하지 않음 |
+| `noChanges` | 실제로 검사할 생산 코드 변경이 있는지 확인. 전체 검사를 원하면 `--changed`를 제거 |
+| Windows 원본에서 권한·파일 기록 오류 | `/mnt/c` 접근과 검사 완료는 별개. WSL 내부 프로젝트와 도구 경로에서 확인 |
+| 설치 중 `workspaceChanged` | 사용자가 바꾼 최신 설정은 유지됨. 현재 설정을 검토한 뒤 `setup` 재실행 |
+
+## 승인된 도구 버전 갱신
+
+플러그인·통합 실행기·언어 도구는 별도로 설치됩니다. **플러그인 갱신만으로 언어 검사기가 갱신되지는 않습니다.** 현재 승인된 어댑터 버전은 Python·TypeScript `0.1.2`, Java `0.1.3`입니다. 승인 여부는 실행기에 포함된 [승인 목록](src/sentinel/admission.json)으로 확인합니다.
+
+`setup`은 기존 언어 소스 저장소를 자동 갱신하지 않습니다. 아래는 이 가이드로 설치한 실행기와 기존 Python 프로젝트를 갱신하는 예시입니다. 저장소에 직접 수정한 파일이 있다면 먼저 검토하고 실패한 Git 갱신을 강제로 덮어쓰지 않습니다.
+
+```bash
+# 실행기 소스를 갱신하고 같은 가상환경에 다시 설치합니다.
+git -C "$HOME/.local/share/sentinel/SENTINEL" pull --ff-only
+"$HOME/.local/share/sentinel/SENTINEL/.venv/bin/python" -m pip install --force-reinstall "$HOME/.local/share/sentinel/SENTINEL"
+
+# 아직 없는 새 소스 폴더를 사용합니다. 기존 프로젝트·도구 경로는 유지합니다.
+SENTINEL_SOURCES="$HOME/.sentinel/sources-$(date -u +%Y%m%dT%H%M%SZ)"
+"$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --sources "$SENTINEL_SOURCES" --format json
+```
+
+기존에 사용한 `--config`, `--python-requirements`, `--java-dependencies`가 있다면 함께 지정합니다. 새 버전은 기존 도구 묶음 옆에 설치되며 이전 묶음을 덮어쓰지 않습니다. 갱신 후 5단계의 진단과 검사를 다시 수행합니다.
+
+## 프로젝트 구조
+
+```text
+SENTINEL/
+├── README.md                 # 처음 설치하는 사람을 위한 사용 가이드
+├── pyproject.toml            # 버전·Python 조건·설치 진입점
+├── src/sentinel/
+│   ├── cli.py                # 명령 처리와 결과 집계
+│   ├── setup.py              # 언어 도구 준비와 프로젝트 설정
+│   ├── bundle.py             # 도구 묶음 검증과 설치
+│   ├── protocol.py           # 언어 검사기 호출과 응답 검증
+│   └── admission.json        # 승인된 언어 검사기 목록
+├── plugins/sentinel/         # 두 AI 도구가 함께 쓰는 플러그인
+├── .claude-plugin/           # Claude Code 설치 목록
+├── .agents/plugins/         # Codex 설치 목록
+├── scripts/                  # 승인 목록 관리 도구
+├── tests/                    # 통합 실행기 시험
+└── docs/                     # 상세 계약·검증 기록·개발 문서
+```
+
+## 검증 범위와 관련 문서
+
+2026-09-16 기준으로 Windows의 Claude Code·Codex에서 WSL Ubuntu x86_64의 실행기를 호출해 세 언어의 성공·품질 실패·미검사·누락·취소를 검증했습니다. 원본 파일 보존도 해당 검증 프로젝트에서 확인했습니다. 다른 Linux CPU·커널, 더 큰 사용자 프로젝트, Windows 드라이브 원본의 전체 실행은 별도 검증 범위입니다. 오래된 WSL 커널의 전체 시험 실패와 Python 취소 직후 잠깐 남는 프로세스는 검증 기록에 남겨 두었습니다.
+
+SENTINEL은 테스트의 단언(assert) 실패로 발견한 변이만 `killed`로 셉니다. 예외로 끝난 변이는 `runtimeError`로 구분하므로 원본 변이 도구와 숫자가 다르게 보일 수 있습니다. 실제 세 프로젝트의 수치와 조건은 아래 비교 기록에 있습니다.
+
+- [명령·설정·도구 제작 상세 계약](docs/references/sentinel-cli-reference.md)
+- [플러그인 안내와 공통 사용 지침](plugins/sentinel/README.md)
+- [Claude Code·Codex·WSL 실제 검증 기록](docs/references/sentinel-host-validation.md)
+- [원본 변이 도구와의 결과 비교](docs/references/sentinel-original-tool-comparison.md)
+- [실행기 내부 API와 격리 설정](docs/references/sentinel-execution-api.md)
+- [현재 개발 진행 순서](docs/exec-plans/active/2026-09-sentinel-unified-entry.md#현재-진행-순서)
+- [MIT 라이선스](LICENSE)
