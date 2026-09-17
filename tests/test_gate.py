@@ -14,8 +14,8 @@ from test_cli import module, write_json  # noqa: E402
 
 
 class GateValueTests(unittest.TestCase):
-    def test_defaults_are_crap_eight_and_full_kill_rate(self):
-        self.assertEqual({"crapMax": "8", "mutationMin": "100"}, DEFAULT_GATE.as_json())
+    def test_defaults_are_crap_eight_and_ninety_percent_kill_rate(self):
+        self.assertEqual({"crapMax": "8", "mutationMin": "90"}, DEFAULT_GATE.as_json())
 
     def test_accepts_decimal_text_with_at_most_two_places(self):
         self.assertEqual("8.5", validate_crap_max("8.5"))
@@ -40,9 +40,14 @@ class GateValueTests(unittest.TestCase):
         self.assertEqual({"crapMax": "7", "mutationMin": "80"}, gate.as_json())
         self.assertEqual(Gate("7", "90"), override_gate(Gate("7", "90"), None, None))
 
+    def test_explicit_existing_full_kill_rate_is_preserved(self):
+        gate = load_gate({"mutationMin": "100"})
+        self.assertEqual(Gate("8", "100"), override_gate(gate, None, None))
+        self.assertEqual(Gate("8", "100"), override_gate(DEFAULT_GATE, None, "100"))
+
     def test_load_gate_reads_partial_objects_and_rejects_unknown_fields(self):
         self.assertEqual(DEFAULT_GATE, load_gate(None))
-        self.assertEqual(Gate("10", "100"), load_gate({"crapMax": "10"}))
+        self.assertEqual(Gate("10", "90"), load_gate({"crapMax": "10"}))
         with self.assertRaises(SentinelError):
             load_gate({"crapMax": "10", "extra": True})
         with self.assertRaises(SentinelError):

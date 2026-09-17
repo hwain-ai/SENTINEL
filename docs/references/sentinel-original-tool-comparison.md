@@ -22,7 +22,7 @@ related:
 - survived: 테스트가 모두 통과해서 변이를 못 잡았다는 뜻. 그 코드 동작을 확인하는 테스트가 없다는 신호.
 - uncovered: 변이가 들어간 줄을 실행하는 테스트가 아예 없어서 실행조차 안 한 변이. Stryker 는 NoCoverage, mutmut 은 종료 코드 33 으로 표시한다.
 - runtimeError: SENTINEL 에만 있는 상태. 테스트가 실패하긴 했는데 "단언(assert) 실패" 가 아니라 예외(TypeError, NullPointerException 등)로 죽은 변이.
-- kill 비율: killed 를 전체 변이 수로 나눈 값. SENTINEL 의 기본 기준은 100% 이고, runtimeError 와 survived 와 uncovered 는 모두 분자에 들어가지 않는다.
+- kill 비율: killed 를 전체 변이 수로 나눈 값. SENTINEL 의 기본 기준은 90% 이고, runtimeError 와 survived 와 uncovered 는 모두 분자에 들어가지 않는다.
 - CRAP: 함수 하나의 복잡도와 테스트가 안 건드린 비율을 곱한 점수. 기본 상한 8. 변이 검사와는 별개의 판정이라 이 문서의 비교 대상이 아니다.
 
 ## 숫자가 다른 이유는 규칙 하나다

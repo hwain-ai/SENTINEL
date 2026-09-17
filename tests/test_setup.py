@@ -134,7 +134,7 @@ class SetupCommandTests(unittest.TestCase):
         check = cli("check", "--project", str(self.project), "--tools", str(self.tools), "--experimental", "--format", "json")
         self.assertEqual(check.returncode, 2, check.stderr)
         request = json.loads((python_root / "last-request.json").read_text())
-        self.assertEqual(request["gate"], {"crapMax": "9", "mutationMin": "100"})
+        self.assertEqual(request["gate"], {"crapMax": "9", "mutationMin": "90"})
         self.assertEqual(request["projectRoot"], str(self.project))
         self.assertEqual(request["config"], str(self.project / "sentinel.config.json"))
 

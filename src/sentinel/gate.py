@@ -11,7 +11,7 @@ from .errors import SentinelError
 # Same text contract as SENTINEL_SPEC golden/gate/threshold-v1.json.
 THRESHOLD = re.compile(r"^(0|[1-9][0-9]*)(\.[0-9]{1,2})?$")
 DEFAULT_CRAP_MAX = "8"
-DEFAULT_MUTATION_MIN = "100"
+DEFAULT_MUTATION_MIN = "90"
 GATE_KEYS = ("crapMax", "mutationMin")
 
 

@@ -27,7 +27,7 @@ SDK는 해당 언어의 프로그램을 빌드하고 실행하는 도구 모음�
 |---|---|
 |최상위 schemaVersion|고정 문자열 sentinel-workspace-v1|
 |최상위 modules|1개 이상 128개 이하의 모듈 목록|
-|최상위 gate|선택 항목. crapMax(기본 "8")와 mutationMin(기본 "100") 문자열|
+|최상위 gate|선택 항목. crapMax(기본 "8")와 mutationMin(기본 "90") 문자열|
 |모듈 id|영문자로 시작하는 영숫자·밑줄·하이픈 식별자, 최대 64자|
 |모듈 language|python, typescript, java 중 하나|
 |모듈 root|프로젝트 기준 상대 폴더 경로. 프로젝트 자체는 점 한 개로 지정한다.|

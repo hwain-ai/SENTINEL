@@ -34,7 +34,7 @@ SENTINEL은 **Python·TypeScript·Java 프로젝트의 코드와 테스트를 �
 ## 주요 기능
 
 - **복잡도와 테스트 범위를 함께 평가합니다.** CRAP 점수는 코드가 얼마나 복잡하고 테스트가 얼마나 실행해 봤는지를 함께 반영합니다. 기본 상한은 8입니다.
-- **테스트가 잘못된 코드를 잡아내는지 확인합니다.** 변이 검사(mutation testing)는 코드를 일부러 조금 바꾼 복사본을 만들고 테스트가 이를 발견하는지 확인합니다. 기본 탐지 비율은 100%입니다.
+- **테스트가 잘못된 코드를 잡아내는지 확인합니다.** 변이 검사(mutation testing)는 코드를 일부러 조금 바꾼 복사본을 만들고 테스트가 이를 발견하는지 확인합니다. 기본 탐지 비율은 90%입니다.
 - **필요한 언어의 검사 환경을 준비합니다.** `setup`이 언어별 검사기와 SDK(컴파일·실행 도구 모음)를 준비하고 프로젝트 설정을 만듭니다.
 - **등록한 전체 모듈 또는 변경한 코드만 검사합니다.** 모듈은 따로 검사할 프로젝트 폴더입니다. 예를 들어 Python 서버와 TypeScript 화면을 각각 등록할 수 있습니다.
 - **실제 통과와 미검사를 구분합니다.** 승인된 도구로 선택 범위를 실제 검사해 통과했을 때만 `certified=true`입니다. 변경할 코드가 없어 건너뛴 `noChanges`는 통과가 아닙니다.
@@ -206,9 +206,9 @@ ls -ld "$SENTINEL_PROJECT"
 
 ```bash
 # setup = 최초 설정; --project = 검사할 폴더; --tools = 언어 도구 보관 폴더
-# --crap-max 8 = 복잡도·테스트 범위 점수 상한; --mutation-min 100 = 변이 탐지 비율 100%
+# --crap-max 8 = 복잡도·테스트 범위 점수 상한; --mutation-min 90 = 변이 탐지 비율 90%
 # --format json = 구조화된 결과 출력
-"$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --crap-max 8 --mutation-min 100 --format json
+"$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --crap-max 8 --mutation-min 90 --format json
 ```
 
 Python 테스트가 외부 패키지를 사용하면 위 명령에 `--python-requirements requirements.txt`를 추가합니다. 파일 경로는 **해당 Python 모듈 기준**입니다. TypeScript의 프로젝트별 패키지·빌드 방식이 검사기의 실행 환경과 맞는지도 확인해야 합니다. 지원 언어라고 해서 모든 프레임워크와 기존 빌드 방식이 자동 지원되는 것은 아닙니다.
@@ -232,7 +232,7 @@ Python 테스트가 외부 패키지를 사용하면 위 명령에 `--python-req
 
 ```bash
 # 같은 프로젝트 아래 api는 Python, web은 TypeScript로 각각 등록합니다.
-"$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --language typescript --module-root python=api --module-root typescript=web --crap-max 8 --mutation-min 100 --format json
+"$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --language typescript --module-root python=api --module-root typescript=web --crap-max 8 --mutation-min 90 --format json
 ```
 
 이미 등록된 모듈의 폴더와 기준은 유지됩니다. 언어를 추가할 때도 새 언어의 폴더를 명시합니다. 여러 모듈을 전부 `.`으로 지정하면 거부됩니다.
@@ -302,7 +302,7 @@ WSL 배포판: Ubuntu
 
 | 하고 싶은 일 | 대화창에 입력할 요청 |
 |---|---|
-| 최초 설정 | `이 경로의 프로젝트에 Python 검사 환경을 setup으로 준비해 줘. CRAP 상한은 8, 변이 탐지 비율은 100%로 설정해 줘.` |
+| 최초 설정 | `이 경로의 프로젝트에 Python 검사 환경을 setup으로 준비해 줘. CRAP 상한은 8, 변이 탐지 비율은 90%로 설정해 줘.` |
 | 검사 범위 확인 | `같은 프로젝트의 검사 범위를 SENTINEL plan으로 확인해 줘.` |
 | 전체 등록 모듈 검사 | `같은 프로젝트의 등록된 모든 모듈에 기본 품질 검사를 실행해 줘.` |
 | 수정한 코드 검사 | `같은 프로젝트에서 HEAD 이후 변경한 코드만 검사해 줘.` |
