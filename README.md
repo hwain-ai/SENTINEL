@@ -1,5 +1,3 @@
-![SENTINEL - Mutation Test and CRAP](docs/assets/the_sentinel.png)
-
 # SENTINEL
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -11,6 +9,8 @@
 SENTINEL은 **Python·TypeScript·Java 프로젝트의 코드와 테스트를 검사**하고 정해 둔 기준을 충족했는지 알려 줍니다. 터미널에서 직접 실행하거나, Claude Code·Codex에 플러그인을 설치해 대화로 검사를 요청할 수 있습니다.
 
 **처음 쓰는 분은 [사용 가이드](#사용-가이드)를 순서대로 따라가세요.** 플러그인 설치와 실제 검사 프로그램 설치는 별도 단계입니다.
+
+![SENTINEL - Mutation Test and CRAP](docs/assets/the_sentinel.png)
 
 ## 목차
 
