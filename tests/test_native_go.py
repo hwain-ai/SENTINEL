@@ -5,7 +5,6 @@ import signal
 import stat
 import tempfile
 import unittest
-from argparse import Namespace
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -324,17 +323,12 @@ class NativeObservationTests(unittest.TestCase):
 
 class NativeCliTests(unittest.TestCase):
     def _args(self):
-        return Namespace(
-            command="check",
-            project="unused",
-            config="sentinel.workspace.json",
-            tools="unused",
-            language=[],
-            module=[],
-            format="json",
-            timeout_seconds=60.0,
-            experimental=True,
-        )
+        from sentinel.cli import build_parser
+
+        return build_parser().parse_args([
+            "check", "--project", "unused", "--tools", "unused",
+            "--format", "json", "--timeout-seconds", "60", "--experimental",
+        ])
 
     def test_native_preparation_failure_blocks_every_selected_checker(self):
         from sentinel import cli
