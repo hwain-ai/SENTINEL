@@ -1,7 +1,7 @@
 # SENTINEL
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-green)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.1.1-green)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.9%2B-yellow)](pyproject.toml)
 
 > 코드의 복잡도와 테스트의 결함 탐지 능력을 함께 검사하는 로컬 품질 검사 도구입니다.
@@ -29,23 +29,23 @@ SENTINEL은 **Python·TypeScript·Java 프로젝트의 코드와 테스트를 �
 - [문제 해결](#문제-해결)
 - [승인된 도구 버전 갱신](#승인된-도구-버전-갱신)
 - [프로젝트 구조](#프로젝트-구조)
-- [검증 범위와 관련 문서](#검증-범위와-관련-문서)
+- [관련 문서](#관련-문서)
 
 ## 주요 기능
 
 - **복잡도와 테스트 범위를 함께 평가합니다.** CRAP 점수는 코드가 얼마나 복잡하고 테스트가 얼마나 실행해 봤는지를 함께 반영합니다. 기본 상한은 8입니다.
 - **테스트가 잘못된 코드를 잡아내는지 확인합니다.** 변이 검사(mutation testing)는 코드를 일부러 조금 바꾼 복사본을 만들고 테스트가 이를 발견하는지 확인합니다. 기본 탐지 비율은 90%입니다.
 - **필요한 언어의 검사 환경을 준비합니다.** `setup`이 언어별 검사기와 SDK(컴파일·실행 도구 모음)를 준비하고 프로젝트 설정을 만듭니다.
-- **등록한 전체 모듈 또는 변경한 코드만 검사합니다.** 모듈은 따로 검사할 프로젝트 폴더입니다. 예를 들어 Python 서버와 TypeScript 화면을 각각 등록할 수 있습니다.
-- **실제 통과와 미검사를 구분합니다.** 승인된 도구로 선택 범위를 실제 검사해 통과했을 때만 `certified=true`입니다. 변경할 코드가 없어 건너뛴 `noChanges`는 통과가 아닙니다.
+- **검사할 파일·함수·테스트를 선택합니다.** 전체 검사와 Git 변경분 검사도 지원합니다. 모듈은 `setup`으로 설정하는 프로젝트 폴더이며, Python 서버와 TypeScript 화면을 각각 지정할 수 있습니다.
+- **품질 통과와 미검사를 구분합니다.** 승인된 도구로 설정된 전체 기능 코드와 기본 테스트 묶음을 검사해 통과해야 `certified=true`입니다. 부분 검사와 변경할 코드가 없어 건너뛴 `noChanges`는 `certified=false`입니다.
 
-여기서 인증은 **이번에 선택한 코드가 SENTINEL의 품질 기준을 통과했다는 의미**입니다. 제품의 모든 버그·보안 문제·운영 위험이 없다는 뜻은 아닙니다.
+여기서 인증은 **설정된 검사 범위가 SENTINEL의 품질 기준을 통과했다는 의미**입니다. 설정에서 제외한 파일이나 제품의 모든 버그·보안 문제까지 보장하지는 않습니다.
 
 ## 기술 스택
 
 | 구성 | 역할 |
 |---|---|
-| Python 3.9+ 통합 실행기 | 설치 파일 확인, 검사기 호출, 실행 시간·자식 프로세스 관리, 결과 집계. 실행 중 추가 Python 패키지 의존성 없음 |
+| Python 3.9+ 통합 실행기 | 설치 파일 확인, 검사기 호출, 자식 프로세스 관리, 결과 집계. 실행 중 추가 Python 패키지 의존성 없음 |
 | Python 검사기 | coverage.py와 mutmut을 사용하는 검사 경로 |
 | TypeScript 검사기 | Vitest·Istanbul과 Stryker를 사용하는 검사 경로 |
 | Java 검사기 | Maven·JaCoCo와 mutate4java를 사용하는 검사 경로 |
@@ -160,7 +160,7 @@ SENTINEL_EXECUTABLE="$HOME/.local/share/sentinel/SENTINEL/.venv/bin/sentinel"
 "$SENTINEL_EXECUTABLE" --version
 ```
 
-**확인:** 현재 배포 버전은 `0.1.0`입니다. 설치 시 빌드에 필요한 setuptools를 내려받을 수 있습니다. 이 단계에서는 다른 언어의 SDK나 검사기를 아직 설치하지 않습니다.
+**확인:** 현재 배포 버전은 `0.1.1`입니다. 설치 시 빌드에 필요한 setuptools를 내려받을 수 있습니다. 이 단계에서는 다른 언어의 SDK나 검사기를 아직 설치하지 않습니다.
 
 이 가이드는 `sentinel`을 시스템 PATH에 추가하는 대신 실행 파일의 경로를 사용합니다. 따라서 실행기 폴더로 매번 이동할 필요가 없습니다. 새 Ubuntu/Linux 터미널을 열면 `SENTINEL_EXECUTABLE=...` 줄을 다시 실행하세요.
 
@@ -256,20 +256,21 @@ Python 테스트가 외부 패키지를 사용하면 위 명령에 `--python-req
 "$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --format json
 ```
 
-`plan`의 범위가 맞고 `doctor`에서 선택한 모듈이 `ready`, `admitted=true`인지 확인한 뒤 `check`로 진행하세요. `doctor`가 성공해도 실제 빌드·테스트는 실패할 수 있습니다. 변이 검사는 프로젝트 크기에 따라 수분에서 수시간이 걸릴 수 있으며 기본 실행 제한은 모듈당 3,600초입니다.
+`plan`의 범위가 맞고 `doctor`에서 선택한 모듈이 `ready`, `admitted=true`인지 확인한 뒤 `check`로 진행하세요. `doctor`가 성공해도 실제 빌드·테스트는 실패할 수 있습니다. 변이 검사는 프로젝트 크기에 따라 수분에서 수시간이 걸릴 수 있으며, 기본 자동 실행 시간 제한은 없습니다.
 
 | 결과 | 사용자가 이해할 의미 | 품질 통과인가? |
 |---|---|---|
 | `planned` | 검사할 범위를 읽었음 | 아직 검사하지 않음 |
 | `ready` | 설치 파일 확인을 마침 | 아직 검사하지 않음 |
-| `passed`, `certified=true` | 승인된 도구로 선택 범위를 실제 검사해 기준을 충족 | 해당 선택 범위에서 통과 |
+| `passed`, `certified=true` | 승인된 도구로 설정된 전체 기능 코드와 기본 테스트 묶음을 검사해 기준을 충족 | 설정된 전체 범위에서 통과 |
+| `passed`, `certified=false` | 일부 파일·함수·테스트·모듈을 선택한 검사 등이 기준을 충족 | 실제 검사한 범위에서 통과 |
 | `qualityFailed` | 검사를 수행했지만 품질 기준에 미달 | 실패 |
 | `noChanges`, `certified=false` | 검사할 변경 코드가 없어 생략 | 미검사 |
 | `baselineFailed` | 원래 테스트부터 실패해 검사 조건이 안 됨 | 실패 원인부터 확인 |
 | `dependencyError` | 필요한 설치 파일이나 실행 의존성이 부족함 | 검사 준비 필요 |
 | `backendNotAdmitted` | 현재 도구가 승인 목록에 없어 실행하지 않음 | 승인된 버전으로 갱신 필요 |
 
-`exitCode=0`이나 `pass=true`만 보고 품질 통과로 판단하지 마세요. `check`의 모듈별 `status`, 전체 `certified`, 선택 범위를 함께 확인합니다. 일부 모듈·변경 코드의 통과를 전체 프로젝트의 통과로 확대하지 않습니다.
+최상위 `pass`는 `exitCode=0`일 때 `true`인 명령 성공 표시입니다. 품질 기준 미달과 실행 오류는 모두 `false`가 될 수 있으므로 모듈별 `status`와 `diagnostic`을 함께 확인합니다. `mutation.pass`는 변이 점수의 기준 충족 여부이며, `inScope`는 그 점수 계산에 포함한 변이 개수입니다. [결과 필드와 출력 예시](docs/results.md)에서 각 값의 뜻을 확인하세요.
 
 <a id="step-6"></a>
 
@@ -306,6 +307,7 @@ WSL 배포판: Ubuntu
 | 검사 범위 확인 | `같은 프로젝트의 검사 범위를 SENTINEL plan으로 확인해 줘.` |
 | 전체 등록 모듈 검사 | `같은 프로젝트의 등록된 모든 모듈에 기본 품질 검사를 실행해 줘.` |
 | 수정한 코드 검사 | `같은 프로젝트에서 HEAD 이후 변경한 코드만 검사해 줘.` |
+| 함수와 테스트 선택 | `src/pricing.py의 calculate_discount 함수를 tests/test_pricing.py로 검사해 줘.` |
 
 최초 설정 요청의 언어·폴더는 실제 프로젝트에 맞게 바꿉니다. CLI가 없거나 신뢰할 실행 경로를 확인할 수 없으면 현재 플러그인은 중단합니다. 그때는 [2단계](#step-2)부터 준비해야 합니다. 새 대화에는 위 경로 정보를 다시 알려 주세요.
 
@@ -346,11 +348,18 @@ Windows에서 WSL 검사기를 쓰면 기본 임시 폴더는 WSL 쪽에 만들�
 # 등록된 Python 모듈만 선택합니다.
 "$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --format json
 
-# 큰 프로젝트에서 모듈당 실행 제한을 7,200초로 지정합니다.
-"$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --timeout-seconds 7200 --format json
+# 특정 기능 함수와 실행할 테스트 파일을 선택합니다. 함수명에 ()를 붙이지 않습니다.
+"$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py --format json
+
+# 설정된 기능 코드 전체와 기본 테스트 묶음을 검사합니다.
+"$SENTINEL_EXECUTABLE" check --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --all --format json
 ```
 
 `--changed-base main`을 추가하면 기준을 `main`으로 바꿉니다. 해당 Git 참조가 실제로 있어야 합니다. 변경한 생산 코드를 검사 대상으로 선택해도 테스트는 전체 실행할 수 있으므로 반드시 빨리 끝난다는 뜻은 아닙니다. README만 바뀐 경우처럼 검사할 생산 코드가 없으면 `noChanges`가 될 수 있습니다.
+
+`--file`은 기능 파일, `--function`은 그 파일 안의 함수, `--tests`는 실행할 테스트 파일입니다. 파일·테스트 옵션은 반복할 수 있고, 함수 선택은 파일 하나와 함께 사용합니다. `--tests`를 생략하면 설정된 테스트 묶음을 사용합니다. 기본 검사는 자동 시간 제한 없이 실행합니다. 테스트만 수정했어도 같은 기능 파일·함수를 지정해 재검사할 수 있습니다.
+
+`results[].details`에는 실제 범위(`scope`), 함수별 CRAP과 파일별 최댓값(`crap`), 파일·함수별 mutation 탐지율과 변이 위치·상태(`mutation`)가 담깁니다. 부분 검사의 `passed`는 그 범위의 통과이며 `certified`는 false입니다. SENTINEL은 LLM 없이 측정값을 반환합니다. [결과 해석](docs/results.md)을 참고하세요.
 
 Windows PowerShell에서 직접 호출해야 한다면 다음 형식을 사용합니다. `<...>`는 확인한 실제 Linux 경로로 바꿉니다. 대화로 요청할 때는 플러그인이 이 호출을 구성합니다.
 
@@ -376,7 +385,7 @@ Get-Command claude
 
 찾지 못하면 [Codex CLI 공식 설치 안내](https://learn.chatgpt.com/docs/codex/cli) 또는 [Claude Code 공식 설치 안내](https://code.claude.com/docs/en/setup)에 따라 터미널용 실행기를 준비하고 **새 PowerShell 창**에서 `--version`을 확인하세요. 앱 내부에서 명령이 실행된다는 사실만으로 외부 터미널의 등록 상태를 판단하면 안 됩니다. 앱의 버전별 내부 경로를 다른 사용자 컴퓨터에 그대로 복사하지 않습니다.
 
-버전이 나와도 `plugin` 하위 명령이 없다면 해당 호스트를 플러그인 기능이 지원되는 버전으로 갱신한 뒤 `plugin --help`로 확인합니다. 실제 검증에 사용한 버전은 [호스트 검증 기록](docs/references/sentinel-host-validation.md)에 있습니다.
+버전이 나와도 `plugin` 하위 명령이 없다면 해당 호스트를 플러그인 기능이 지원되는 버전으로 갱신한 뒤 `plugin --help`로 확인합니다.
 
 ### 설치 명령을 실행했는데 sentinel 명령은 없습니다
 
@@ -399,7 +408,7 @@ Get-Command claude
 
 ## 승인된 도구 버전 갱신
 
-플러그인·통합 실행기·언어 도구는 별도로 설치됩니다. **플러그인 갱신만으로 언어 검사기가 갱신되지는 않습니다.** 현재 승인된 어댑터 버전은 Python·TypeScript `0.1.2`, Java `0.1.3`입니다. 승인 여부는 실행기에 포함된 [승인 목록](src/sentinel/admission.json)으로 확인합니다.
+플러그인·통합 실행기·언어 도구는 별도로 설치됩니다. **플러그인 갱신만으로 언어 검사기가 갱신되지는 않습니다.** 파일·함수·테스트 선택을 지원하는 어댑터 버전은 Python·TypeScript `0.1.3`, Java `0.1.4`입니다. 승인 여부는 실행기에 포함된 [승인 목록](src/sentinel/admission.json)으로 확인합니다. 이전 승인 항목은 기존 설치의 일반 검사를 위해 유지하며, 선택 기능을 사용하려면 실행기와 해당 언어 도구를 함께 갱신합니다.
 
 `setup`은 기존 언어 소스 저장소를 자동 갱신하지 않습니다. 아래는 이 가이드로 설치한 실행기와 기존 Python 프로젝트를 갱신하는 예시입니다. 저장소에 직접 수정한 파일이 있다면 먼저 검토하고 실패한 Git 갱신을 강제로 덮어쓰지 않습니다.
 
@@ -423,6 +432,8 @@ SENTINEL/
 ├── pyproject.toml            # 버전·Python 조건·설치 진입점
 ├── src/sentinel/
 │   ├── cli.py                # 명령 처리와 결과 집계
+│   ├── selection.py          # 파일·함수·테스트 선택
+│   ├── diagnostics.py        # 함수·파일별 점수와 측정 근거
 │   ├── setup.py              # 언어 도구 준비와 프로젝트 설정
 │   ├── bundle.py             # 도구 묶음 검증과 설치
 │   ├── protocol.py           # 언어 검사기 호출과 응답 검증
@@ -430,21 +441,17 @@ SENTINEL/
 ├── plugins/sentinel/         # 두 AI 도구가 함께 쓰는 플러그인
 ├── .claude-plugin/           # Claude Code 설치 목록
 ├── .agents/plugins/         # Codex 설치 목록
-├── scripts/                  # 승인 목록 관리 도구
+├── scripts/                  # 문서 검사·승인 목록 관리 도구
 ├── tests/                    # 통합 실행기 시험
-└── docs/                     # 상세 계약·검증 기록·개발 문서
+└── docs/                     # 사용법·결과 해석·개발 참고
 ```
 
-## 검증 범위와 관련 문서
+## 관련 문서
 
-2026-09-16 기준으로 Windows의 Claude Code·Codex에서 WSL Ubuntu x86_64의 실행기를 호출해 세 언어의 성공·품질 실패·미검사·누락·취소를 검증했습니다. 원본 파일 보존도 해당 검증 프로젝트에서 확인했습니다. 다른 Linux CPU·커널, 더 큰 사용자 프로젝트, Windows 드라이브 원본의 전체 실행은 별도 검증 범위입니다. 오래된 WSL 커널의 전체 시험 실패와 Python 취소 직후 잠깐 남는 프로세스는 검증 기록에 남겨 두었습니다.
-
-SENTINEL은 테스트의 단언(assert) 실패로 발견한 변이만 `killed`로 셉니다. 예외로 끝난 변이는 `runtimeError`로 구분하므로 원본 변이 도구와 숫자가 다르게 보일 수 있습니다. 실제 세 프로젝트의 수치와 조건은 아래 비교 기록에 있습니다.
-
+- [문서 목록](docs/index.md): 문서별 내용과 관련 코드
+- [결과 해석과 출력 예시](docs/results.md): 점수·변이 개수·판정·오류 구분
 - [명령·설정·도구 제작 상세 계약](docs/references/sentinel-cli-reference.md)
 - [플러그인 안내와 공통 사용 지침](plugins/sentinel/README.md)
-- [Claude Code·Codex·WSL 실제 검증 기록](docs/references/sentinel-host-validation.md)
-- [원본 변이 도구와의 결과 비교](docs/references/sentinel-original-tool-comparison.md)
-- [실행기 내부 API와 격리 설정](docs/references/sentinel-execution-api.md)
-- [현재 개발 진행 순서](docs/exec-plans/active/2026-09-sentinel-unified-entry.md#현재-진행-순서)
+- [사용하는 외부 도구](docs/references/sentinel-quality-tools-reference.md)
+- [개발과 문서 수정](docs/contributing.md): 변경 코드에 맞는 문서 확인과 push 전 검사
 - [MIT 라이선스](LICENSE)

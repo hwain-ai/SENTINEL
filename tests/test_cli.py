@@ -111,7 +111,7 @@ def make_bundle(parent, language="python", version="1.2.3", behavior="pass"):
         """,
         "oversized": """
             import sys
-            sys.stdout.write('x' * (1024 * 1024 + 1))
+            sys.stdout.write('x' * (16 * 1024 * 1024 + 1))
         """,
         "timeout": """
             import time
@@ -182,7 +182,7 @@ class CliBootstrapTests(unittest.TestCase):
     def test_version_is_available(self):
         completed = cli("--version")
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("0.1.0", completed.stdout)
+        self.assertIn("0.1.1", completed.stdout)
 
     def test_help_does_not_resolve_the_current_project(self):
         environment = os.environ.copy()

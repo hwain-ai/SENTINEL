@@ -22,7 +22,7 @@ def command_templates(plugin_root=PLUGIN_ROOT):
     if not skill_path.is_file():
         raise AssertionError("Shared SENTINEL skill is missing")
     commands = {}
-    for line in skill_path.read_text(encoding="utf-8").splitlines():
+    for line in documentation_lines(plugin_root):
         if not line.startswith('"$SENTINEL_EXECUTABLE" '):
             continue
         arguments = shlex.split(line)
@@ -31,6 +31,12 @@ def command_templates(plugin_root=PLUGIN_ROOT):
                 raise AssertionError(f"Duplicate documented command template: {arguments[1]}")
             commands[arguments[1]] = arguments
     return commands
+
+
+def documentation_lines(plugin_root=PLUGIN_ROOT):
+    skill = plugin_root / "skills" / "sentinel"
+    paths = [skill / "SKILL.md", *sorted((skill / "references").glob("*.md"))]
+    return [line for path in paths for line in path.read_text(encoding="utf-8").splitlines()]
 
 
 def run_template(template, project, *extra):
@@ -68,7 +74,7 @@ class HostPluginStructureTests(unittest.TestCase):
                 self.assertTrue(manifest_path.is_file(), f"{manifest_path.parent.name} plugin package is missing")
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 self.assertEqual(manifest["name"], "sentinel")
-                self.assertEqual(manifest["version"], "0.1.0")
+                self.assertEqual(manifest["version"], "0.1.1")
                 self.assertEqual(manifest["skills"], "./skills/")
         self.assertTrue(SKILL_PATH.is_file(), "Shared SENTINEL skill is missing")
 
@@ -120,7 +126,7 @@ class HostPluginStructureTests(unittest.TestCase):
         )
 
     def test_duplicate_documented_command_templates_are_rejected(self):
-        skill_lines = SKILL_PATH.read_text(encoding="utf-8").splitlines()
+        skill_lines = documentation_lines()
         for command in ("plan", "doctor", "check", "setup"):
             with self.subTest(command=command), tempfile.TemporaryDirectory() as directory:
                 copied = Path(directory) / "sentinel"

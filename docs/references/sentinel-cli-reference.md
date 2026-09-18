@@ -1,6 +1,6 @@
 # SENTINEL 명령·설정·도구 제작 상세 계약
 
-처음 설치하는 분은 [README 사용 가이드](../../README.md#사용-가이드)를 먼저 따르세요. 이 문서는 기존 README의 세부 계약을 모은 개발자 참고입니다.
+처음 설치하는 분은 [README 사용 가이드](../../README.md#사용-가이드)를 먼저 따르세요. 명령 옵션·설정 파일·언어 검사기 연결 규칙은 아래 계약을 따릅니다.
 
 아래 `.venv/bin/sentinel` 예시는 실행기와 검사 프로젝트가 같은 폴더라는 가정입니다. 다른 프로젝트에는 README에서 지정한 실행 파일 경로와 `--project`, `--tools`를 사용합니다. `--experimental`은 개발자 검증용이며 정식 품질 인증을 하지 않습니다.
 
@@ -46,13 +46,27 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 .venv/bin/sentinel plan --project . --language python --format json
 # doctor = 설치 지문 확인. 검사기와 프로젝트 테스트는 실행하지 않음
 .venv/bin/sentinel doctor --project . --format json
-# check = 검사 요청(승인된 묶음만 실행); --timeout-seconds 7200 = 모듈당 실행 제한 7200초(생략하면 언어 도구 3600초, 최대 86400초)
-.venv/bin/sentinel check --project . --timeout-seconds 7200 --format json
+# check = 검사 요청(승인된 묶음만 실행). 기본 자동 실행 시간 제한은 없다.
+.venv/bin/sentinel check --project . --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py --format json
 # --experimental = 승인되지 않은 묶음도 실행(결과는 인증되지 않음)
 .venv/bin/sentinel check --project . --experimental --format json
 ```
 
 위 명령은 프로젝트와 이 패키지의 설치 위치가 같은 폴더라는 예시입니다. 다른 프로젝트에서는 설치한 sentinel 명령의 경로를 사용하고 --project에 검사할 폴더를 지정합니다. --config는 프로젝트 기준 workspace 설정 경로, --tools는 언어 도구를 보관한 폴더이며 생략 시 프로젝트 아래 .sentinel-tools를 사용합니다.
+
+| 검사 선택 옵션 | 입력과 동작 |
+|---|---|
+| `--file src/pricing.py` | 점수를 측정할 기능 파일. 여러 파일이면 옵션을 반복 |
+| `--function calculate_discount` | 파일 안의 함수 이름. 괄호 없이 지정하며 `--file` 하나와 함께 사용. 생략하면 파일 전체 |
+| `--tests tests/test_pricing.py` | 실행할 테스트 파일. 여러 파일이면 옵션을 반복. 생략하면 설정된 테스트 묶음 사용 |
+| `--all` | 설정된 기능 코드 전체 검사. 기능 파일·테스트 파일이 아닌 저장소의 모든 파일을 검사한다는 뜻은 아님 |
+| `--changed` | Git 기준으로 변경된 기능 코드 검사. 기본 기준은 `HEAD`, 다른 기준은 `--changed-base`로 지정 |
+
+`--all`, `--changed`, `--file`은 한 호출에서 섞지 않습니다. 에이전트나 사용자가 소스와 관련 테스트를 찾아 지정하며, SENTINEL이 LLM으로 관련 테스트를 추정하지는 않습니다. 경로는 검사 프로젝트 기준으로 해석하고, 선택한 파일은 설정된 모듈에 속해야 합니다. 테스트 파일만 수정했을 때도 `--file`로 해당 기능 파일을 지정하면 재검사합니다.
+
+Java의 함수 선택은 변이 도구의 행 범위를 사용합니다. 선택한 함수와 다른 메서드가 같은 행에 겹치면 선택을 거부하므로 파일 전체를 검사하거나 메서드를 서로 다른 행에 작성합니다.
+
+파일·함수·테스트 선택에는 통합 실행기 `0.1.1`과 Python·TypeScript 어댑터 `0.1.3`, Java 어댑터 `0.1.4`를 사용합니다. 도구의 승인 여부는 [admission.json](../../src/sentinel/admission.json)에 기록된 버전·지문·CI 근거로 확인합니다. 구버전 도구가 선택 요청을 처리하지 못하면 결과를 거부합니다. [실행기와 언어 도구 갱신](../../README.md#승인된-도구-버전-갱신) 후 다시 검사합니다.
 
 ## 언어 도구 묶음의 제작·설치 계약
 
@@ -75,13 +89,15 @@ entrypoint도 files에 포함하며 manifest 자체는 제외합니다. 미기�
 
 처음 확인한 뒤 원본 파일이 바뀔 수 있으므로 복사할 때도 파일별 지문과 누적 크기를 쓰기 전에 다시 확인합니다. 바뀐 내용을 발견하면 설치를 중단하고 기존 설치는 유지합니다.
 
-일반 실행 파일 형식의 실험 실행에서 도구는 표준 입력으로 JSON 요청 하나를 받고, 표준 출력으로 JSON 응답 하나를 내보냅니다. 요청에는 protocolVersion, 새 requestId, command(check), moduleId, language, projectRoot(선택 모듈의 절대 경로), config(설정 파일 절대 경로 또는 null), gate(crapMax·mutationMin 문자열)가 있고, `check --changed`일 때만 changedFiles(모듈 기준 상대 경로 목록)가 붙습니다. 작업 디렉터리도 선택한 모듈입니다. 응답은 protocolVersion, requestId, command, moduleId, language, toolVersion, status, exitCode, passed만 허용하며 요청과 도구의 신원이 일치해야 합니다. stdout에 로그를 섞으면 계약 위반입니다.
+일반 실행 파일 형식의 실험 실행에서 도구는 표준 입력으로 JSON 요청 하나를 받고, 표준 출력으로 JSON 응답 하나를 내보냅니다. 요청에는 protocolVersion, 새 requestId, command(check), moduleId, language, projectRoot(선택 모듈의 절대 경로), config(설정 파일 절대 경로 또는 null), gate(crapMax·mutationMin 문자열)가 있고, `check --changed`일 때만 changedFiles(모듈 기준 상대 경로 목록)가 붙습니다. 작업 디렉터리도 선택한 모듈입니다. 명시적 선택에는 selection(files·functions·tests 배열)이 추가됩니다. 응답의 필수 필드는 protocolVersion, requestId, command, moduleId, language, toolVersion, status, exitCode, passed입니다. 선택적으로 selection·details·diagnostic을 허용합니다. selection 요청은 같은 값을 응답해야 하고, details는 수치·변이 목록·판정의 일치를 확인한 뒤 공통 진단 결과로 변환합니다. 요청과 도구의 신원도 일치해야 합니다. stdout에 로그를 섞으면 계약 위반입니다.
 
 ## 결과 해석과 안전 경계
 
-공통 결과의 selection이 allConfigured이면 등록 모듈 전체, partial이면 일부만 대상으로 했습니다. moduleCount는 그 개수입니다. results에는 모듈 식별자, 언어, 관측 상태, 관측 종료 코드와 해당하는 경우 승인 여부(admitted)를 담습니다. 원본 로그나 경로는 싣지 않습니다.
+출력 예시와 필드별 뜻은 [결과 해석](../results.md)을 참고하세요. 최상위 `pass`는 명령 전체가 종료 코드 0으로 끝났는지, `details.mutation.pass`는 검사 범위의 변이 점수가 기준을 충족했는지 나타냅니다. `details.mutation.functions[].pass`는 해당 함수의 판정입니다. `inScope`는 변이 점수 계산에 포함한 변이 개수이며 테스트 수가 아닙니다. `killed=2`, `inScope=2`이면 탐지율은 `2 / 2 × 100 = 100%`입니다.
 
-plan·doctor의 pass는 각각 범위 확인·설치 확인의 성공일 뿐입니다. doctor의 `admitted`는 묶음이 승인 목록에 있는지 알려 줍니다. 기본 check는 선택한 모든 모듈이 승인됐고 **실제로 검사되어 `passed`**일 때만 certified=true입니다. `--changed`에서 하나라도 `noChanges`이면 정상 종료(pass=true, 종료 0)할 수 있지만 certified=false이며, 검사하지 않은 코드를 품질 통과로 표시하면 안 됩니다. 부분 선택의 인증은 그 선택 범위에만 적용됩니다. 승인되지 않은 모듈은 실행하지 않고 backendNotAdmitted(6), certified=false입니다. `--experimental`은 언제나 certified=false이며 모두 passed여도 종료 6입니다.
+공통 결과의 selection이 allConfigured이면 등록 모듈 전체, partial이면 일부만 대상으로 했습니다. moduleCount는 그 개수입니다. results에는 모듈 식별자, 언어, 관측 상태, 관측 종료 코드, 승인 여부(admitted), 선택적 진단 코드(diagnostic)와 측정 결과(details)를 담습니다. details.scope는 실제 대상과 테스트 범위이며, crap·mutation에는 함수별·파일별 점수와 실패 위치가 있습니다. 상대 경로와 도구가 확인한 변이 내용은 포함하지만 관계없는 원본 로그를 싣지 않습니다.
+
+plan·doctor의 pass는 각각 범위 확인·설치 확인의 성공일 뿐입니다. doctor의 `admitted`는 묶음이 승인 목록에 있는지 알려 줍니다. 기본 check는 설정된 모든 모듈이 승인됐고 **전체 기능 코드와 기본 테스트 묶음으로 실제 검사되어 `passed`**일 때만 certified=true입니다. `--changed`에서 하나라도 `noChanges`이면 정상 종료(pass=true, 종료 0)할 수 있지만 certified=false이며, 검사하지 않은 코드를 품질 통과로 표시하면 안 됩니다. 파일·함수·테스트·변경분 또는 일부 모듈을 선택한 검사는 통과해도 certified=false입니다. 승인되지 않은 모듈은 실행하지 않고 backendNotAdmitted(6), certified=false입니다. `--experimental`은 언제나 certified=false이며 모두 passed여도 종료 6입니다.
 
 ## 승인 목록(admission.json)
 
@@ -105,4 +121,4 @@ python3 scripts/admission.py lint
 
 취소와 자식 프로세스 정리 실패가 겹치면 해당 모듈은 backendError=6으로 남기고, 아직 시작하지 않은 모듈은 cancelled=8로 표시합니다. 이후 도구는 실행하지 않습니다. 명령의 출력 통로가 닫혔거나 사용할 수 없으면 내부 예외 대신 종료 코드 3으로 끝냅니다.
 
-일반 실행 파일 형식에는 실행 시간과 합계 1 MiB 출력 제한, 최소 환경 변수, 프로세스 그룹 정리를 적용합니다. 이것만으로 파일·네트워크·자원을 강제로 격리하지는 못합니다. 지문 일치도 제작자의 신뢰나 악성 코드 부재를 증명하지 않습니다.
+일반 실행 파일 형식의 기본 검사는 자동 시간 제한 없이 실행하며 합계 16 MiB 출력 제한, 최소 환경 변수, 프로세스 그룹 정리를 적용합니다. `--timeout-seconds`는 사용자가 명시한 경우에만 적용합니다. 기본 검사는 파일·네트워크·자원을 강제로 격리하지 않습니다. 지문 일치도 제작자의 신뢰나 악성 코드 부재를 증명하지 않습니다.

@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "documents": [
+    {
+      "path": "README.md",
+      "summary": "설치, 프로젝트 설정, 첫 검사와 문제 해결"
+    },
+    {
+      "path": "docs/results.md",
+      "summary": "검사 범위, inScope·killed·pass·certified의 의미와 실제 출력 예시"
+    },
+    {
+      "path": "docs/references/sentinel-cli-reference.md",
+      "summary": "CLI 옵션, 설정 파일, 도구 승인과 종료 상태"
+    },
+    {
+      "path": "docs/references/sentinel-quality-tools-reference.md",
+      "summary": "언어별 검사 도구와 측정 방식"
+    },
+    {
+      "path": "plugins/sentinel/README.md",
+      "summary": "Claude Code·Codex 플러그인의 설치 경로와 역할"
+    },
+    {
+      "path": "plugins/sentinel/skills/sentinel/SKILL.md",
+      "summary": "에이전트의 파일·함수·테스트 선택 및 결과 사용 지침"
+    },
+    {
+      "path": "plugins/sentinel/skills/sentinel/references/setup.md",
+      "summary": "에이전트가 사용하는 초기 설정과 Windows WSL 호출"
+    },
+    {
+      "path": "docs/contributing.md",
+      "summary": "문서 색인·소스 연결표 관리, diff 검사와 push 훅 사용"
+    }
+  ],
+  "rules": [
+    {
+      "id": "runner",
+      "sources": [
+        "src/sentinel/**"
+      ],
+      "documents": [
+        "docs/references/sentinel-cli-reference.md"
+      ]
+    },
+    {
+      "id": "results",
+      "sources": [
+        "src/sentinel/cli.py",
+        "src/sentinel/diagnostics.py",
+        "src/sentinel/protocol.py",
+        "src/sentinel/gate.py"
+      ],
+      "documents": [
+        "docs/results.md"
+      ]
+    },
+    {
+      "id": "setup",
+      "sources": [
+        "src/sentinel/setup.py",
+        "src/sentinel/bundle.py",
+        "pyproject.toml"
+      ],
+      "documents": [
+        "README.md",
+        "plugins/sentinel/skills/sentinel/references/setup.md"
+      ]
+    },
+    {
+      "id": "admission",
+      "sources": [
+        "src/sentinel/admission.py",
+        "src/sentinel/admission.json",
+        "scripts/admission.py"
+      ],
+      "documents": [
+        "docs/references/sentinel-cli-reference.md"
+      ]
+    },
+    {
+      "id": "plugin",
+      "sources": [
+        ".agents/plugins/*.json",
+        ".claude-plugin/*.json",
+        "plugins/sentinel/.claude-plugin/*.json",
+        "plugins/sentinel/.codex-plugin/*.json"
+      ],
+      "documents": [
+        "plugins/sentinel/README.md",
+        "plugins/sentinel/skills/sentinel/SKILL.md"
+      ]
+    },
+    {
+      "id": "documentation-checks",
+      "sources": [
+        "scripts/docs_lint.py",
+        "scripts/verify_repository.sh",
+        ".githooks/**",
+        ".github/workflows/**",
+        "docs/manifest.json",
+        "tests/test_docs_lint.py"
+      ],
+      "documents": [
+        "docs/contributing.md"
+      ]
+    },
+    {
+      "id": "agent-context",
+      "sources": [
+        "src/sentinel/cli.py",
+        "src/sentinel/selection.py"
+      ],
+      "documents": [
+        "plugins/sentinel/skills/sentinel/SKILL.md"
+      ]
+    },
+    {
+      "id": "engine-guide",
+      "sources": [
+        "src/sentinel/setup.py",
+        "src/sentinel/admission.json"
+      ],
+      "documents": [
+        "docs/references/sentinel-quality-tools-reference.md"
+      ]
+    }
+  ],
+  "ignoreDocuments": []
+}

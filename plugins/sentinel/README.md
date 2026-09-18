@@ -28,11 +28,14 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 | 설치 상태 진단 | `doctor` | 설치 파일의 버전·지문·승인 여부 확인 |
 | 프로젝트 최초 설정 | `setup` | 필요한 언어 도구 준비와 설정 파일 생성 |
 | 기본 품질 검사 | `check` | 승인된 검사기로 선택 범위 검사 |
+| 함수와 테스트 선택 | `check --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py` | 지정한 기능 함수와 테스트 검사. 함수명에는 괄호를 붙이지 않음 |
 | 변경 코드 검사 | `check --changed` | 변경된 생산 코드 범위 검사 |
 
 설명만 요청하면 명령을 실행하지 않습니다. 실행기가 없거나 확인할 수 없으면 전제 조건을 설명하고 중단합니다. 이미 준비된 실행기를 통한 언어 SDK 설치는 `setup`으로 수행합니다. 플러그인의 정확한 호출 규칙은 [SKILL.md](skills/sentinel/SKILL.md)에 있습니다.
 
-`doctor`의 `ready`는 실제 품질 통과가 아닙니다. `check`에서 실제로 `passed`이고 `certified=true`여야 선택 범위의 통과입니다. `noChanges`는 미검사입니다. [검사 복사본과 원본의 설정·기록 폴더](../../README.md#검사는-어디에서-실행되나요)도 구분하세요.
+`doctor`의 `ready`는 실제 품질 통과가 아닙니다. `passed`는 검사한 범위의 통과이며, `certified=true`는 설정된 전체 기능 코드와 전체 테스트 범위의 인증입니다. 파일·함수·테스트·변경분을 선택한 결과는 `certified=false`입니다. `noChanges`는 미검사입니다. [검사 복사본과 원본의 설정·기록 폴더](../../README.md#검사는-어디에서-실행되나요)도 구분하세요.
+
+최상위 `pass`는 명령 전체의 성공 여부, `mutation.pass`는 변이 점수의 기준 충족 여부입니다. `inScope`는 점수 계산 대상 변이 개수이고 테스트 개수가 아닙니다. 점수와 실패 위치를 읽는 방법은 [결과 해석과 출력 예시](../../docs/results.md)를 참고하세요.
 
 ## 플러그인 소스 구성
 
@@ -42,11 +45,11 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 
 두 설정은 같은 `./skills/`를 사용합니다. 저장소 루트의 `.agents/plugins/marketplace.json`과 `.claude-plugin/marketplace.json`이 이 폴더를 가리킵니다. 로컬 소스를 마켓플레이스로 등록할 때는 이 폴더 자체가 아닌 **SENTINEL 저장소 루트**를 지정합니다.
 
-별도 서버·자동 실행 훅·언어 SDK·검사 엔진은 포함하지 않습니다. 기본 검사가 보안 컨테이너 안에서 실행된다는 보장도 하지 않습니다. 실제 설치·스킬 발견·호출 검증은 [호스트·WSL 검증 기록](../../docs/references/sentinel-host-validation.md)에 있습니다.
+플러그인은 사용 지침을 제공합니다. 실행기와 언어 SDK는 별도로 설치하며, 기본 검사는 보안 컨테이너 없이 실행합니다.
 
 ## 소스 검증
 
-SENTINEL 저장소 루트에서 호출 규칙을 시험한다.
+Ubuntu/Linux의 SENTINEL 저장소 루트에서 호출 규칙을 시험합니다.
 
 ```bash
 # python3 = Python 실행기; -B = 캐시 파일 생성 금지; -m unittest = 테스트 실행
@@ -54,15 +57,4 @@ SENTINEL 저장소 루트에서 호출 규칙을 시험한다.
 python3 -B -m unittest discover -s tests -p test_host_plugin.py -v
 ```
 
-아래 두 변수에 로컬 Codex의 플러그인·스킬 제작 지침 폴더를 각각 지정한 뒤 파일 구조를 검사한다.
-
-```bash
-# python3 = Python 실행기; PLUGIN_CREATOR_SKILL = 플러그인 제작 지침 폴더
-# validate_plugin.py = 플러그인 구조 검사; plugins/sentinel = 검사할 플러그인
-python3 "$PLUGIN_CREATOR_SKILL/scripts/validate_plugin.py" plugins/sentinel
-# SKILL_CREATOR_SKILL = 스킬 제작 지침 폴더; quick_validate.py = 스킬 구조 검사
-# plugins/sentinel/skills/sentinel = 검사할 지침 폴더
-python3 "$SKILL_CREATOR_SKILL/scripts/quick_validate.py" plugins/sentinel/skills/sentinel
-```
-
-위 검사는 소스 구조만 확인한다. 실제 호스트 설치·활성화나 프로젝트 품질 검사를 대신하지 않는다.
+이 테스트는 플러그인 설정과 문서의 호출 예시를 확인합니다. 실제 호스트 설치·활성화나 프로젝트 품질 검사는 별도로 실행해야 합니다. 문서를 수정할 때는 [개발 안내](../../docs/contributing.md)의 문서 검사도 실행하세요.

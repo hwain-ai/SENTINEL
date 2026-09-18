@@ -8,3 +8,14 @@ dist/
 .sentinel-tools/
 .weapon/
 .claude/
+
+# Internal plans and validation reports are kept outside this repository.
+/docs/design-docs/
+/docs/exec-plans/
+/docs/product-specs/
+/docs/references/sentinel-direction-review.md
+/docs/references/sentinel-execution-api.md
+/docs/references/sentinel-host-validation.md
+/docs/references/sentinel-native-connection-boundary.md
+/docs/references/sentinel-original-tool-comparison.md
+/docs/references/sentinel-agent-selection-validation.md

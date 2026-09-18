@@ -190,7 +190,7 @@ class AdmittedCheckTests(unittest.TestCase):
         (self.project / "two" / "source.ts").write_text("const x = 2;\n")
         checked = self.run_command("check", "--changed")
         self.assertEqual(checked.returncode, 0, checked.stderr)
-        self.assertTrue(json.loads(checked.stdout)["certified"])
+        self.assertFalse(json.loads(checked.stdout)["certified"])
 
     def test_adapter_can_report_that_changed_files_contain_no_production_code(self):
         digest, entrypoint = self.install("python", behavior="no_changes")

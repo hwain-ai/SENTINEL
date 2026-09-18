@@ -1,28 +1,19 @@
-# SENTINEL 문서
+# 문서 안내
 
-통합 실행기와 세 언어 검사기를 아우르는 기획·설계·실행 계획·참고 문서입니다. 언어별 검증 기록은 각 언어 저장소의 docs 에 있습니다.
+각 문서의 내용과 함께 확인할 코드·설정 경로입니다.
 
-## 기획과 설계
+`docs/manifest.json`을 수정한 뒤 `python scripts/docs_lint.py --write-index`로 이 목록을 갱신합니다.
+코드 변경에 필요한 문서는 `python scripts/docs_lint.py --base HEAD`로 확인합니다.
+Python 명령은 환경에 맞게 Windows에서 `py -3`, Linux에서 `python3`로 바꿀 수 있습니다.
+검사는 관련 문서의 실제 변경 여부를 확인하며, 설명이 정확한지는 사람이 검토해야 합니다.
 
-* [제품 명세: 통합 진입점](product-specs/2026-09-sentinel-unified-entry.md) - 한 명령으로 여러 언어를 검사하는 플러그인의 요구
-* [설계: 통합 진입점](design-docs/2026-09-sentinel-unified-entry.md) - 실행기·도구 묶음 규약·호스트 플러그인 구조
-* [실행 계획: 통합 진입점](exec-plans/active/2026-09-sentinel-unified-entry.md) - 언어별 진행 상태, 현재 진행 순서, 날짜별 변경이력
-* [제품 명세: 네이티브 품질 도구](product-specs/2026-08-native-quality-tools.md) - 2026-08 원안의 요구
-* [설계: 네이티브 품질 도구](design-docs/2026-08-native-quality-tools.md) - 2026-08 원안의 설계
-* [실행 계획: 네이티브 품질 도구](exec-plans/active/2026-08-native-quality-tools.md) - 2026-08 원안의 진행 기록
-
-## 참고
-
-* [호스트·WSL 실제 검증](references/sentinel-host-validation.md) - 두 호스트 설치·실제 호출, 세 언어 시험 결과와 남은 항목
-
-* [원본 변이 도구와의 결과 비교](references/sentinel-original-tool-comparison.md) - mutmut·Stryker·mutate4java 와 숫자가 다른 이유와 세 언어 대조 표
-* [실행기 개발자 참고](references/sentinel-execution-api.md) - 내부 함수, 격리 설정, 과거 시험 이력
-* [네이티브 연결 경계](references/sentinel-native-connection-boundary.md) - 언어 검사기를 실행기에 연결할 때의 경계
-* [외부 도구 참고 범위](references/sentinel-quality-tools-reference.md) - 언어별 외부 CRAP·변이 도구의 공식 자료와 사용 범위
-* [방향성·단순화 검토](references/sentinel-direction-review.md) - 한 명령·언어별 독립 설치 방향의 검토와 언어별 순차 연결 결정
-
-## 언어별 검증 기록(각 저장소)
-
-* [Python](https://github.com/hwain-ai/SENTINEL_PY/blob/main/docs/sentinel-python-native-validation.md)
-* [TypeScript](https://github.com/hwain-ai/SENTINEL_TS/blob/main/docs/sentinel-typescript-native-validation.md)
-* [Java 상용 후보 검토](https://github.com/hwain-ai/SENTINEL_JAVA/blob/main/docs/sentinel-java-commercial-candidates.md)
+| 문서 | 내용 | 관련 코드·설정 |
+| --- | --- | --- |
+| [README.md](../README.md) | 설치, 프로젝트 설정, 첫 검사와 문제 해결 | `pyproject.toml`, `src/sentinel/bundle.py`, `src/sentinel/setup.py` |
+| [docs/contributing.md](contributing.md) | 문서 색인·소스 연결표 관리, diff 검사와 push 훅 사용 | `.githooks/**`, `.github/workflows/**`, `docs/manifest.json`, `scripts/docs_lint.py`, `scripts/verify_repository.sh`, `tests/test_docs_lint.py` |
+| [docs/references/sentinel-cli-reference.md](references/sentinel-cli-reference.md) | CLI 옵션, 설정 파일, 도구 승인과 종료 상태 | `scripts/admission.py`, `src/sentinel/**`, `src/sentinel/admission.json`, `src/sentinel/admission.py` |
+| [docs/references/sentinel-quality-tools-reference.md](references/sentinel-quality-tools-reference.md) | 언어별 검사 도구와 측정 방식 | `src/sentinel/admission.json`, `src/sentinel/setup.py` |
+| [docs/results.md](results.md) | 검사 범위, inScope·killed·pass·certified의 의미와 실제 출력 예시 | `src/sentinel/cli.py`, `src/sentinel/diagnostics.py`, `src/sentinel/gate.py`, `src/sentinel/protocol.py` |
+| [plugins/sentinel/README.md](../plugins/sentinel/README.md) | Claude Code·Codex 플러그인의 설치 경로와 역할 | `.agents/plugins/*.json`, `.claude-plugin/*.json`, `plugins/sentinel/.claude-plugin/*.json`, `plugins/sentinel/.codex-plugin/*.json` |
+| [plugins/sentinel/skills/sentinel/SKILL.md](../plugins/sentinel/skills/sentinel/SKILL.md) | 에이전트의 파일·함수·테스트 선택 및 결과 사용 지침 | `.agents/plugins/*.json`, `.claude-plugin/*.json`, `plugins/sentinel/.claude-plugin/*.json`, `plugins/sentinel/.codex-plugin/*.json`, `src/sentinel/cli.py`, `src/sentinel/selection.py` |
+| [plugins/sentinel/skills/sentinel/references/setup.md](../plugins/sentinel/skills/sentinel/references/setup.md) | 에이전트가 사용하는 초기 설정과 Windows WSL 호출 | `pyproject.toml`, `src/sentinel/bundle.py`, `src/sentinel/setup.py` |

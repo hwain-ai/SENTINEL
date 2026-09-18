@@ -15,6 +15,8 @@ from .gate import override_gate
 from .native_go import is_native_go, prepare_native_go, run_native_go
 from .protocol import Observation, run_check
 from .setup import SETUP_LANGUAGES, run_setup
+from .selection import resolve_selection
+from .diagnostics import text_details
 from .workspace import Module, load_workspace, select_modules
 
 
@@ -47,8 +49,8 @@ class CliParser(argparse.ArgumentParser):
         self.exit(3, "sentinel: usageError: invalid arguments\n")
 
 
-# A full mutation run of a real project takes minutes to hours; the timeout is a safety net, not a budget.
-DEFAULT_TOOL_TIMEOUT_SECONDS = 3600.0
+# Production checks have no automatic deadline. Explicit legacy limits remain opt-in.
+DEFAULT_TOOL_TIMEOUT_SECONDS = None
 # The native Go sandbox keeps its own hard limit.
 NATIVE_GO_MAX_TIMEOUT_SECONDS = 900.0
 
@@ -93,6 +95,10 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--experimental", action="store_true")
     check.add_argument("--changed", action="store_true")
     check.add_argument("--changed-base", default="HEAD")
+    check.add_argument("--all", action="store_true", help="inspect all configured production files")
+    check.add_argument("--file", action="append", default=[], help="production file; repeat for multiple files")
+    check.add_argument("--function", action="append", default=[], help="function name without (); requires one --file")
+    check.add_argument("--tests", action="append", default=[], help="test file; repeat for multiple test files")
     _gate_options(check)
     setup = commands.add_parser("setup")
     setup.add_argument("--project")
@@ -151,7 +157,11 @@ def _emit(payload: Dict[str, object], output_format: str) -> None:
         line = f"{result['moduleId']} [{result['language']}]: {result['status']} (exit {result['exitCode']})"
         if "admitted" in result:
             line += ", admitted" if result["admitted"] else ", not admitted"
+        if result.get("diagnostic"):
+            line += ": " + result["diagnostic"]
         lines.append(line)
+        if result.get("details") is not None:
+            lines.extend(text_details(result["details"]))
     _write(sys.stdout, "\n".join(lines) + "\n")
 
 
@@ -212,6 +222,12 @@ def _admissions(args: argparse.Namespace):
 
 def _run_workspace(args: argparse.Namespace) -> int:
     project, selection, modules, tools, gate = _selected(args)
+    selections = {}
+    if args.command == "check":
+        original_modules = modules
+        modules, selections = resolve_selection(project, modules, args.file, args.function, args.tests, args.changed, args.all)
+        if modules != original_modules or selections:
+            selection = "partial"
     if args.command == "plan":
         payload = _envelope("plan", selection, [_result(item, "planned", 0) for item in modules], True, 0)
         _emit(payload, args.format)
@@ -244,6 +260,8 @@ def _run_workspace(args: argparse.Namespace) -> int:
         for module in modules
         if is_native_go(bundles[module.module_id]) and args.experimental
     ]
+    if native_modules and selections:
+        raise SentinelError("unsupportedSelection", "explicit file/function/test selection requires a Python, TypeScript or Java adapter", 3)
     changes: Dict[str, List[str]] = {}
     changed_mode = getattr(args, "changed", False)
     if changed_mode:
@@ -301,6 +319,7 @@ def _run_workspace(args: argparse.Namespace) -> int:
                     tool_timeout,
                     gate,
                     changes.get(module.module_id) if changed_mode else None,
+                    selections.get(module.module_id),
                 )
             observations.append(observation)
             if observation.cancellation_requested:
@@ -315,12 +334,18 @@ def _run_workspace(args: argparse.Namespace) -> int:
         _result(module, observation.status, observation.exit_code, admitted[module.module_id])
         for module, observation in zip(modules, observations)
     ]
+    for result, observation in zip(results, observations):
+        if observation.details is not None:
+            result["details"] = observation.details
+        if observation.diagnostic is not None:
+            result["diagnostic"] = observation.diagnostic
     exit_code = _aggregate_exit(observations)
     if args.experimental and exit_code == 0:
         # An experimental run may include unadmitted adapters, so a clean run is still not admitted.
         exit_code = 6
     passed = exit_code == 0
-    certified = (passed and all(admitted[module.module_id] for module in modules)
+    certified = (passed and selection == "allConfigured" and not changed_mode and not selections
+                 and all(admitted[module.module_id] for module in modules)
                  and all(observation.status == "passed" for observation in observations))
     payload = _envelope("check", selection, results, passed, exit_code, certified)
     _emit(payload, args.format)

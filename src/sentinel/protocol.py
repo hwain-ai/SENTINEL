@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import selectors
 import signal
 import subprocess
@@ -13,10 +14,11 @@ from typing import Dict, List, Optional, Sequence
 from .bundle import Bundle
 from .errors import SentinelError
 from .gate import DEFAULT_GATE, Gate
+from .diagnostics import normalize_details
 from .workspace import Module, parse_json_bytes
 
 
-MAX_OUTPUT_BYTES = 1024 * 1024
+MAX_OUTPUT_BYTES = 16 * 1024 * 1024
 _REFERENCE_OUTPUT_BYTES = 16777216 + 65536 + 4096
 STATUS_CODES = {
     "passed": 0,
@@ -48,6 +50,8 @@ class Observation:
     status: str
     exit_code: int
     cancellation_requested: bool = False
+    details: Optional[Dict[str, object]] = None
+    diagnostic: Optional[str] = None
 
 
 @dataclass
@@ -109,7 +113,7 @@ def _close_stream(stream) -> bool:
         return False
 
 
-def _collect(process: subprocess.Popen, request: bytes, timeout: float) -> tuple:
+def _collect(process: subprocess.Popen, request: bytes, timeout: Optional[float]) -> tuple:
     return _collect_core(process, request, timeout, MAX_OUTPUT_BYTES, False)
 
 
@@ -119,7 +123,7 @@ def _collect_reference(process: subprocess.Popen, request: bytes, timeout: float
 
 def _collect_core(process, request, timeout, output_limit, strict_retention):
     streams = {process.stdout: bytearray(), process.stderr: bytearray()}
-    deadline = time.monotonic() + timeout
+    deadline = None if timeout is None else time.monotonic() + timeout
     failure: Optional[str] = None
     written = 0
     selector = None
@@ -132,11 +136,11 @@ def _collect_core(process, request, timeout, output_limit, strict_retention):
             os.set_blocking(stream.fileno(), False)
             selector.register(stream, selectors.EVENT_READ, "output")
         while selector.get_map():
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
+            remaining = None if deadline is None else deadline - time.monotonic()
+            if remaining is not None and remaining <= 0:
                 failure = "timeout"
                 break
-            events = selector.select(min(remaining, 0.1))
+            events = selector.select(0.1 if remaining is None else min(remaining, 0.1))
             for key, _ in events:
                 if key.data == "stdin":
                     try:
@@ -167,8 +171,8 @@ def _collect_core(process, request, timeout, output_limit, strict_retention):
             if failure:
                 break
         if failure is None:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
+            remaining = None if deadline is None else deadline - time.monotonic()
+            if remaining is not None and remaining <= 0:
                 failure = "timeout"
             else:
                 try:
@@ -221,7 +225,7 @@ def _parse_response(raw: bytes, request: Dict[str, object], bundle: Bundle, proc
         response = parse_json_bytes(raw, "tool response")
     except SentinelError:
         return Observation("toolError", 1) if not raw and process_code != 0 else Observation("backendError", 6)
-    if not isinstance(response, dict) or set(response) != RESPONSE_KEYS:
+    if not isinstance(response, dict) or not RESPONSE_KEYS <= set(response) or set(response) - RESPONSE_KEYS - {"details", "selection", "diagnostic"}:
         return Observation("backendError", 6)
     string_fields = ("protocolVersion", "requestId", "command", "moduleId", "language", "toolVersion", "status")
     if any(not isinstance(response.get(key), str) for key in string_fields):
@@ -244,9 +248,24 @@ def _parse_response(raw: bytes, request: Dict[str, object], bundle: Bundle, proc
         return Observation("backendError", 6)
     if process_code != response["exitCode"]:
         return Observation("backendError", 6)
-    if status == "passed":
-        return Observation("passed", 0)
-    return Observation(status, response["exitCode"])
+    if "selection" in request and response.get("selection") != request["selection"]:
+        return Observation("backendError", 6, diagnostic="selectionNotAcknowledged")
+    diagnostic = response.get("diagnostic")
+    if diagnostic is not None and (not isinstance(diagnostic, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,95}", diagnostic)):
+        return Observation("backendError", 6)
+    details = response.get("details")
+    if details is not None and not isinstance(details, dict):
+        return Observation("backendError", 6)
+    if details is not None:
+        try:
+            details = normalize_details(response["language"], details, request["gate"])
+            if status in ("passed", "qualityFailed") and (details["crap"]["pass"] and details["mutation"]["pass"]) != (status == "passed"):
+                raise ValueError("qualityDetailsVerdictMismatch")
+        except (KeyError, TypeError, ValueError, ArithmeticError):
+            return Observation("backendError", 6)
+    elif "selection" in request and status in ("passed", "qualityFailed"):
+        return Observation("backendError", 6)
+    return Observation(status, response["exitCode"], details=details, diagnostic=diagnostic)
 
 
 def _entrypoint_command(executable: Path) -> List[str]:
@@ -269,9 +288,10 @@ def run_check(
     module: Module,
     project: Path,
     bundle: Bundle,
-    timeout: float,
+    timeout: Optional[float],
     gate: Gate = DEFAULT_GATE,
     changed_files: Optional[Sequence[str]] = None,
+    selection: Optional[Dict[str, object]] = None,
 ) -> Observation:
     request: Dict[str, object] = {
         "protocolVersion": "sentinel-tool-protocol-v1",
@@ -285,6 +305,8 @@ def run_check(
     }
     if changed_files is not None:
         request["changedFiles"] = list(changed_files)
+    if selection is not None:
+        request["selection"] = selection
     payload = json.dumps(request, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     executable = bundle.source / bundle.entrypoint
     try:

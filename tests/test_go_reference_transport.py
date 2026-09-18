@@ -40,8 +40,8 @@ class ReferenceCollectorTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(raw).hexdigest(), '77f4a8cc14ddcbe093ea8cf899a6c8d5298a5e4f709cb5843724de544d0b828e')
 
     def test_default_collector_keeps_existing_extra_read_policy(self):
-        self.assertEqual(protocol.MAX_OUTPUT_BYTES, 1048576)
-        for count,expected in ((1048576,None),(1048577,'outputOverflow')):
+        self.assertEqual(protocol.MAX_OUTPUT_BYTES, 16 * 1024 * 1024)
+        for count,expected in ((protocol.MAX_OUTPUT_BYTES,None),(protocol.MAX_OUTPUT_BYTES + 1,'outputOverflow')):
             stdout, stderr, failure = self.collect_bytes(protocol._collect, count)
             self.assertEqual((len(stdout), stderr, failure), (count, b'', expected))
 
