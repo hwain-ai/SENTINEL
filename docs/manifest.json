@@ -3,7 +3,7 @@
   "documents": [
     {
       "path": "README.md",
-      "summary": "설치, 프로젝트 설정, 첫 검사와 문제 해결"
+      "summary": "사용자·에이전트 역할, 설치 프롬프트, 명령·JSON 해석과 기존 도구 비교"
     },
     {
       "path": "docs/results.md",
@@ -35,6 +35,21 @@
     }
   ],
   "rules": [
+    {
+      "id": "readme-usage",
+      "sources": [
+        "src/sentinel/cli.py",
+        "src/sentinel/diagnostics.py",
+        "src/sentinel/protocol.py",
+        "src/sentinel/gate.py",
+        "src/sentinel/setup.py",
+        "src/sentinel/bundle.py",
+        "pyproject.toml"
+      ],
+      "documents": [
+        "README.md"
+      ]
+    },
     {
       "id": "runner",
       "sources": [
