@@ -34,10 +34,10 @@ class ReferenceCollectorTests(unittest.TestCase):
         self.assertTrue(all(s.closed for s in (child.stdin, child.stdout, child.stderr)))
         return result
 
-    def test_legacy_bootstrap_golden_before_refactor(self):
+    def test_bootstrap_golden_with_version_command(self):
         raw = go_sandbox._BOOTSTRAP.encode()
-        self.assertEqual(len(raw), 4582)
-        self.assertEqual(hashlib.sha256(raw).hexdigest(), '77f4a8cc14ddcbe093ea8cf899a6c8d5298a5e4f709cb5843724de544d0b828e')
+        self.assertEqual(len(raw), 4583)
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), '25507ca23ea5d99b5fd224122d7409824976b101773e50b2998eba77389f37a5')
 
     def test_default_collector_keeps_existing_extra_read_policy(self):
         self.assertEqual(protocol.MAX_OUTPUT_BYTES, 16 * 1024 * 1024)
