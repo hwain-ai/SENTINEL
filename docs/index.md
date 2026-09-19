@@ -9,11 +9,11 @@ Python 명령은 환경에 맞게 Windows에서 `py -3`, Linux에서 `python3`�
 
 | 문서 | 내용 | 관련 코드·설정 |
 | --- | --- | --- |
-| [README.md](../README.md) | 사용자·에이전트 역할, 설치 프롬프트, 명령·JSON 해석과 기존 도구 비교 | `pyproject.toml`, `src/sentinel/bundle.py`, `src/sentinel/cli.py`, `src/sentinel/diagnostics.py`, `src/sentinel/gate.py`, `src/sentinel/protocol.py`, `src/sentinel/setup.py` |
-| [docs/contributing.md](contributing.md) | 문서 색인·소스 연결표 관리, diff 검사와 push 훅 사용 | `.githooks/**`, `.github/workflows/**`, `docs/manifest.json`, `scripts/docs_lint.py`, `scripts/verify_repository.sh`, `tests/test_docs_lint.py` |
+| [README.md](../README.md) | 사용자·에이전트 역할, 첫 사용 준비, 명령·JSON 해석과 업데이트 책임 | `pyproject.toml`, `src/sentinel/bundle.py`, `src/sentinel/cli.py`, `src/sentinel/diagnostics.py`, `src/sentinel/gate.py`, `src/sentinel/protocol.py`, `src/sentinel/setup.py` |
+| [docs/contributing.md](contributing.md) | 문서 색인·소스 연결표 관리, diff 검사와 push 훅 사용 | `.githooks/**`, `.github/workflows/**`, `docs/manifest.json`, `scripts/docs_lint.py`, `scripts/verify_native.py`, `scripts/verify_repository.sh`, `tests/test_docs_lint.py` |
 | [docs/references/sentinel-cli-reference.md](references/sentinel-cli-reference.md) | CLI 옵션, 설정 파일, 도구 승인과 종료 상태 | `scripts/admission.py`, `src/sentinel/**`, `src/sentinel/admission.json`, `src/sentinel/admission.py` |
 | [docs/references/sentinel-quality-tools-reference.md](references/sentinel-quality-tools-reference.md) | 언어별 검사 도구와 측정 방식 | `src/sentinel/admission.json`, `src/sentinel/setup.py` |
 | [docs/results.md](results.md) | 검사 범위, 명령 성공과 품질 합격의 구분, 점수·위치와 JSON 조각별 해설 | `src/sentinel/cli.py`, `src/sentinel/diagnostics.py`, `src/sentinel/gate.py`, `src/sentinel/protocol.py` |
 | [plugins/sentinel/README.md](../plugins/sentinel/README.md) | Claude Code·Codex 플러그인의 설치 경로와 역할 | `.agents/plugins/*.json`, `.claude-plugin/*.json`, `plugins/sentinel/.claude-plugin/*.json`, `plugins/sentinel/.codex-plugin/*.json` |
-| [plugins/sentinel/skills/sentinel/SKILL.md](../plugins/sentinel/skills/sentinel/SKILL.md) | 에이전트의 파일·함수·테스트 선택 및 결과 사용 지침 | `.agents/plugins/*.json`, `.claude-plugin/*.json`, `plugins/sentinel/.claude-plugin/*.json`, `plugins/sentinel/.codex-plugin/*.json`, `src/sentinel/cli.py`, `src/sentinel/selection.py` |
-| [plugins/sentinel/skills/sentinel/references/setup.md](../plugins/sentinel/skills/sentinel/references/setup.md) | 에이전트가 사용하는 초기 설정과 Windows WSL 호출 | `pyproject.toml`, `src/sentinel/bundle.py`, `src/sentinel/setup.py` |
+| [plugins/sentinel/skills/sentinel/SKILL.md](../plugins/sentinel/skills/sentinel/SKILL.md) | 첫 사용 확인, 파일·함수·테스트 선택과 통과까지 수정·재검사 지침 | `.agents/plugins/*.json`, `.claude-plugin/*.json`, `plugins/sentinel/.claude-plugin/*.json`, `plugins/sentinel/.codex-plugin/*.json`, `src/sentinel/cli.py`, `src/sentinel/selection.py` |
+| [plugins/sentinel/skills/sentinel/references/setup.md](../plugins/sentinel/skills/sentinel/references/setup.md) | 첫 호출 설치 안내, Linux·macOS 준비와 Windows WSL 호출 | `pyproject.toml`, `src/sentinel/bundle.py`, `src/sentinel/setup.py` |

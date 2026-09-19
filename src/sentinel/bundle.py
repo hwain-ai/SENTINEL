@@ -5,6 +5,7 @@ import os
 import secrets
 import shutil
 import stat
+import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List
@@ -26,6 +27,7 @@ MAX_BUNDLE_BYTES = 64 * 1024 * 1024
 MAX_PATH_DEPTH = 256
 AT_FDCWD = -100
 RENAME_NOREPLACE = 1
+RENAME_EXCL = 4
 
 
 @dataclass(frozen=True)
@@ -302,21 +304,23 @@ def _make_private_directories(path: Path) -> None:
 
 
 def _publish_noreplace(staged: Path, destination: Path) -> bool:
-    # RISK(race): Linux renameat2(NOREPLACE) is required; replacing a collision could destroy installed data.
+    # RISK(race): both native operations reject existing destinations atomically.
     try:
         libc = ctypes.CDLL(None, use_errno=True)
-        renameat2 = libc.renameat2
+        if sys.platform == "darwin":
+            rename = libc.renamex_np
+            rename.argtypes = (ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint)
+            arguments = (os.fsencode(staged), os.fsencode(destination), RENAME_EXCL)
+        elif sys.platform == "linux":
+            rename = libc.renameat2
+            rename.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint)
+            arguments = (AT_FDCWD, os.fsencode(staged), AT_FDCWD, os.fsencode(destination), RENAME_NOREPLACE)
+        else:
+            raise SentinelError("atomicPublishUnavailable", "atomic no-replace publication is unavailable")
     except (AttributeError, OSError):
         raise SentinelError("atomicPublishUnavailable", "atomic no-replace publication is unavailable")
-    renameat2.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint)
-    renameat2.restype = ctypes.c_int
-    result = renameat2(
-        AT_FDCWD,
-        os.fsencode(staged),
-        AT_FDCWD,
-        os.fsencode(destination),
-        RENAME_NOREPLACE,
-    )
+    rename.restype = ctypes.c_int
+    result = rename(*arguments)
     if result == 0:
         return True
     error_number = ctypes.get_errno()

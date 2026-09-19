@@ -1,7 +1,7 @@
 {
   "name": "sentinel",
-  "version": "0.2.0",
-  "description": "이미 설치된 신뢰할 수 있는 SENTINEL로 Python·TypeScript·Java 프로젝트의 검사 범위와 설치 상태를 확인하거나 기본 검사를 요청합니다.",
+  "version": "0.3.0",
+  "description": "SENTINEL의 첫 사용 준비와 Python·TypeScript·Java 검사, 기준을 통과할 때까지 수정·재검사를 에이전트에게 요청합니다.",
   "author": {
     "name": "hwain-ai"
   },

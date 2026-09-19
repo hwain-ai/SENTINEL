@@ -28,3 +28,31 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/admission.py verify
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify supported commands and atomic installation
+        env:
+          PYTHONPATH: src:tests
+        run: |
+          export TMPDIR="$(python3 -c 'import pathlib,tempfile; print(pathlib.Path(tempfile.gettempdir()).resolve())')"
+          python3 -B -m unittest test_bundle_publication test_cli test_setup test_admission test_changed test_gate test_selection test_host_plugin test_protocol_entrypoint test_docs_lint tests.test_review_fixes.InstallReviewTests -v
+      - name: Install and exercise admitted Python, TypeScript and Java tools
+        run: python3 -B scripts/verify_native.py --output "$RUNNER_TEMP/sentinel-native"
+      - name: Save native verification output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/sentinel-native/*/*.json
+            ${{ runner.temp }}/sentinel-native/*/*.stderr

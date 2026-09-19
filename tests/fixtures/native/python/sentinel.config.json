@@ -1,0 +1,34 @@
+{
+  "modules": [
+    {
+      "coverage": {
+        "command": [
+          "python",
+          "-m",
+          "coverage",
+          "json"
+        ],
+        "format": "coverage-py-json",
+        "report": "coverage.json"
+      },
+      "id": "python",
+      "language": "python",
+      "production": [
+        "src/**/*.py"
+      ],
+      "root": ".",
+      "testCommand": [
+        "python",
+        "-m",
+        "pytest"
+      ],
+      "testPatterns": [
+        "test_*.py"
+      ],
+      "testRoots": [
+        "tests"
+      ]
+    }
+  ],
+  "specVersion": "1.0.0"
+}

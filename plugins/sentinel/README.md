@@ -9,7 +9,7 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 | 순서 | 사용자가 할 일 |
 |---|---|
 | 1 | [사용할 환경과 플러그인 준비](../../README.md#1-사용할-환경과-플러그인-준비) |
-| 2 | [설치 프롬프트를 에이전트에게 전달](../../README.md#2-에이전트에게-설치-요청) |
+| 2 | [첫 호출에서 설치·프로젝트 준비](../../README.md#2-첫-사용-준비) |
 | 3 | [원하는 검사 또는 수정·재검사 요청](../../README.md#3-에이전트에게-검사-요청) |
 
 플러그인 설치에는 저장소를 직접 복제할 필요가 없습니다. 호스트가 GitHub에서 설치 목록과 플러그인을 가져옵니다. 이 폴더만 설치해도 실행기·언어 SDK가 함께 설치되는 것은 아닙니다.
@@ -27,7 +27,7 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 | 함수와 테스트 선택 | `check --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py` | 지정한 기능 함수와 테스트 검사. 함수명에는 괄호를 붙이지 않음 |
 | 변경 코드 검사 | `check --changed` | 변경된 생산 코드 범위 검사 |
 
-설명만 요청하면 명령을 실행하지 않습니다. 실행기가 없거나 확인할 수 없으면 전제 조건을 설명하고 중단합니다. 이미 준비된 실행기를 통한 언어 SDK 설치는 `setup`으로 수행합니다. 플러그인의 정확한 호출 규칙은 [SKILL.md](skills/sentinel/SKILL.md)에 있습니다.
+설명만 요청하면 명령을 실행하지 않습니다. 실행기가 없으면 첫 호출에서 필요한 정보와 설치 동의를 확인한 뒤 공식 실행기와 언어 도구를 준비합니다. 이미 준비된 실행기를 통한 언어 SDK 설치는 `setup`으로 수행합니다. 플러그인의 정확한 호출 규칙은 [SKILL.md](skills/sentinel/SKILL.md)에 있습니다.
 
 `doctor`의 `ready`는 설치 상태 확인입니다. `results[].status`의 `passed`는 검사한 범위의 품질 통과, `noChanges`는 미검사입니다. `selection`은 전체 설정 범위(`allConfigured`)와 선택·변경분 범위(`partial`)를 구분합니다. [README의 JSON 결과 해석](../../README.md#json-결과-읽기)에서 예시를 확인하세요.
 
@@ -41,7 +41,7 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 
 두 설정은 같은 `./skills/`를 사용합니다. 저장소 루트의 `.agents/plugins/marketplace.json`과 `.claude-plugin/marketplace.json`이 이 폴더를 가리킵니다. 로컬 소스를 마켓플레이스로 등록할 때는 이 폴더 자체가 아닌 **SENTINEL 저장소 루트**를 지정합니다.
 
-플러그인은 사용 지침을 제공합니다. 실행기와 언어 SDK는 별도로 설치하며, 기본 검사는 보안 컨테이너 없이 실행합니다.
+플러그인은 사용 지침을 제공합니다. 첫 호출에서 에이전트가 실행기와 언어 도구를 준비하고, "통과할 때까지" 요청에는 기준을 유지하며 수정·재검사를 반복합니다. Linux·macOS에서는 직접 실행하고 Windows에서는 WSL을 사용합니다.
 
 ## 소스 검증
 

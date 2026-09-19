@@ -74,7 +74,7 @@ class HostPluginStructureTests(unittest.TestCase):
                 self.assertTrue(manifest_path.is_file(), f"{manifest_path.parent.name} plugin package is missing")
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 self.assertEqual(manifest["name"], "sentinel")
-                self.assertEqual(manifest["version"], "0.2.0")
+                self.assertEqual(manifest["version"], "0.3.0")
                 self.assertEqual(manifest["skills"], "./skills/")
         self.assertTrue(SKILL_PATH.is_file(), "Shared SENTINEL skill is missing")
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sentinel-workspace"
-version = "0.2.0"
+version = "0.3.0"
 license = {text = "MIT"}
 description = "버전을 고정한 SENTINEL 언어 도구를 연결하는 로컬 통합 실행기"
 readme = "README.md"

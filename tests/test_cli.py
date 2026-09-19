@@ -133,7 +133,7 @@ def make_bundle(parent, language="python", version="1.2.3", behavior="pass"):
         "descendant": f"""
             import json, subprocess, sys
             request = json.load(sys.stdin)
-            child = subprocess.Popen(['/usr/bin/python3', '-c', 'import time; time.sleep(30)'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            child = subprocess.Popen([{sys.executable!r}, '-c', 'import time; time.sleep(30)'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             Path({str(parent / 'descendant-pid')!r}).write_text(str(child.pid))
             response = {{key: request[key] for key in ('protocolVersion', 'requestId', 'command', 'moduleId', 'language')}}
             response.update(toolVersion='1.2.3', status='passed', exitCode=0, passed=True)
@@ -182,7 +182,7 @@ class CliBootstrapTests(unittest.TestCase):
     def test_version_is_available(self):
         completed = cli("--version")
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("0.2.0", completed.stdout)
+        self.assertIn("0.3.0", completed.stdout)
 
     def test_help_does_not_resolve_the_current_project(self):
         environment = os.environ.copy()
@@ -513,12 +513,15 @@ class CheckTests(unittest.TestCase):
         completed = self.run_check("--experimental")
         self.assertEqual(completed.returncode, 6, completed.stderr)
         pid = int((self.base / "descendant-pid").read_text())
+        def alive():
+            process = subprocess.run(["ps", "-p", str(pid), "-o", "stat="], capture_output=True, text=True)
+            return process.returncode == 0 and bool(process.stdout.strip()) and not process.stdout.strip().startswith("Z")
         for _ in range(20):
-            if not Path(f"/proc/{pid}").exists():
+            if not alive():
                 break
             import time
             time.sleep(0.05)
-        self.assertFalse(Path(f"/proc/{pid}").exists(), "descendant process survived group cleanup")
+        self.assertFalse(alive(), "descendant process survived group cleanup")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,32 @@
+{
+  "modules": [
+    {
+      "coverage": {
+        "command": [
+          "vitest",
+          "--run",
+          "--coverage"
+        ],
+        "format": "istanbul-json",
+        "report": "coverage/coverage-final.json"
+      },
+      "id": "typescript",
+      "language": "typescript",
+      "production": [
+        "src/**/*.ts"
+      ],
+      "root": ".",
+      "testCommand": [
+        "vitest",
+        "--run"
+      ],
+      "testPatterns": [
+        "*.test.ts"
+      ],
+      "testRoots": [
+        "test"
+      ]
+    }
+  ],
+  "specVersion": "1.0.0"
+}

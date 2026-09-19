@@ -1,0 +1,11 @@
+.sentinel/
+.sentinel-tools/
+.sentinel-m2/
+.sentinel-deps/
+__pycache__/
+.pytest_cache/
+.coverage
+coverage.json
+coverage/
+target/
+node_modules/

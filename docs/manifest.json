@@ -3,7 +3,7 @@
   "documents": [
     {
       "path": "README.md",
-      "summary": "사용자·에이전트 역할, 설치 프롬프트, 명령·JSON 해석과 기존 도구 비교"
+      "summary": "사용자·에이전트 역할, 첫 사용 준비, 명령·JSON 해석과 업데이트 책임"
     },
     {
       "path": "docs/results.md",
@@ -23,11 +23,11 @@
     },
     {
       "path": "plugins/sentinel/skills/sentinel/SKILL.md",
-      "summary": "에이전트의 파일·함수·테스트 선택 및 결과 사용 지침"
+      "summary": "첫 사용 확인, 파일·함수·테스트 선택과 통과까지 수정·재검사 지침"
     },
     {
       "path": "plugins/sentinel/skills/sentinel/references/setup.md",
-      "summary": "에이전트가 사용하는 초기 설정과 Windows WSL 호출"
+      "summary": "첫 호출 설치 안내, Linux·macOS 준비와 Windows WSL 호출"
     },
     {
       "path": "docs/contributing.md",
@@ -115,7 +115,8 @@
         ".githooks/**",
         ".github/workflows/**",
         "docs/manifest.json",
-        "tests/test_docs_lint.py"
+        "tests/test_docs_lint.py",
+        "scripts/verify_native.py"
       ],
       "documents": [
         "docs/contributing.md"

@@ -1,22 +1,22 @@
 {
   "name": "sentinel",
-  "version": "0.2.0",
-  "description": "이미 설치된 신뢰할 수 있는 SENTINEL로 Python·TypeScript·Java 프로젝트의 검사 범위와 설치 상태를 확인하거나 기본 검사를 요청합니다.",
+  "version": "0.3.0",
+  "description": "SENTINEL의 첫 사용 준비와 Python·TypeScript·Java 검사, 기준을 통과할 때까지 수정·재검사를 에이전트에게 요청합니다.",
   "author": {
     "name": "hwain-ai"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "SENTINEL",
-    "shortDescription": "기존 SENTINEL 명령으로 프로젝트 검사 요청",
-    "longDescription": "사용자가 선택한 SENTINEL 명령으로 Python·TypeScript·Java 프로젝트의 범위 확인·설치 진단·승인된 첫 실행 설정·기본 검사를 요청합니다. Windows에서는 WSL의 실행 파일을 호출하며 검사 결과와 미검사를 구분합니다.",
+    "shortDescription": "첫 사용 준비부터 품질 기준 통과까지",
+    "longDescription": "Linux·macOS·Windows WSL에서 필요한 SENTINEL 설치를 안내하고 파일·함수·테스트를 검사합니다. 통과할 때까지 요청하면 기존 CRAP·mutation 기준을 유지하며 코드·테스트 수정과 재검사를 이어갑니다.",
     "developerName": "hwain-ai",
     "category": "Developer Tools",
     "capabilities": [
       "로컬 SENTINEL 명령 호출"
     ],
     "defaultPrompt": [
-      "신뢰할 수 있는 SENTINEL 명령으로 이 프로젝트의 검사 범위를 확인해 줘."
+      "SENTINEL로 이 프로젝트를 검사하고 CRAP·mutation 기준에 통과할 때까지 수정해 줘."
     ]
   }
 }

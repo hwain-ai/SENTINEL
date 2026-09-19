@@ -41,7 +41,7 @@ def fake_language_source(sources, repository, version="0.3.1", setup_exit=0):
     entrypoint.chmod(0o700)
     setup = tool / "setup.sh"
     setup.write_text(
-        "#!/usr/bin/bash\n"
+        "#!/bin/bash\n"
         f"echo bootstrapped >> \"$(dirname \"$0\")/../bootstrap.log\"\n"
         f"exit {setup_exit}\n",
         encoding="utf-8",
@@ -52,7 +52,7 @@ def fake_language_source(sources, repository, version="0.3.1", setup_exit=0):
     scripts.mkdir()
     launcher = scripts / "uv.sh"
     launcher.write_text(
-        "#!/usr/bin/bash\n"
+        "#!/bin/bash\n"
         "printf '%s\\n' \"$*\" >> \"$(dirname \"$0\")/../deps.log\"\n"
         "[ \"$1\" = deps ] || exit 2\n"
         "[ \"$4\" = --offline ] && exit 1\n"
@@ -62,7 +62,7 @@ def fake_language_source(sources, repository, version="0.3.1", setup_exit=0):
     launcher.chmod(0o700)
     maven = scripts / "mvn.sh"
     maven.write_text(
-        "#!/usr/bin/bash\n"
+        "#!/bin/bash\n"
         "printf '%s\\n' \"$*\" >> \"$(dirname \"$0\")/../maven.log\"\n"
         "[ \"$1\" = deps ] || exit 2\n"
         "[ -f \"$2/pom.xml\" ] || exit 1\n"
