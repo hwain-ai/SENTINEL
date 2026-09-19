@@ -71,7 +71,7 @@ def _workspace_options(parser: argparse.ArgumentParser, include_timeout: bool = 
     parser.add_argument("--tools")
     parser.add_argument("--language", action="append", default=[])
     parser.add_argument("--module", action="append", default=[])
-    parser.add_argument("--format", choices=("text", "json"), default="text")
+    parser.add_argument("--format", choices=("text", "json"), default="json", help="output format (default: json)")
     # The admitted-bundle list ships with the package; a path here replaces it (tests, organisation lists).
     parser.add_argument("--admission")
     if include_timeout:
@@ -109,7 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
     setup.add_argument("--language", action="append", default=[], choices=sorted(SETUP_LANGUAGES))
     setup.add_argument("--module-root", action="append", default=[], metavar="LANGUAGE=PATH",
                        help="existing module folder relative to the project; repeat for each new language")
-    setup.add_argument("--format", choices=("text", "json"), default="text")
+    setup.add_argument("--format", choices=("text", "json"), default="json", help="output format (default: json)")
     setup.add_argument("--python-requirements")
     setup.add_argument("--java-dependencies", action="store_true")
     _gate_options(setup)

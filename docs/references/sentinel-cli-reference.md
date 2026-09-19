@@ -19,6 +19,8 @@
 
 SDK는 해당 언어의 프로그램을 빌드하고 실행하는 도구 모음입니다. SENTINEL 명령의 설치와 언어 도구·SDK의 준비는 별개입니다.
 
+`plan`·`doctor`·`check`·`setup`은 기본적으로 JSON을 출력합니다. `--format json`은 생략할 수 있고, 텍스트 요약이 필요하면 `--format text`를 지정합니다.
+
 ## 검사 범위 설정
 
 검사할 프로젝트의 sentinel.workspace.json에 다음 필드를 둡니다. 파일 형식은 JSON이며 중복 필드와 알 수 없는 필드는 거부합니다.

@@ -5,7 +5,7 @@ SENTINEL은 검사한 범위, CRAP 점수, 변이 탐지율과 측정 근거를 
 ## 검사 범위
 
 ```sh
-sentinel check --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py --format json
+sentinel check --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py
 ```
 
 | 입력 | 의미 |
@@ -14,7 +14,8 @@ sentinel check --file src/pricing.py --function calculate_discount --tests tests
 | `--file` | 점수를 측정할 기능 파일. 여러 파일이면 옵션을 반복한다. |
 | `--function` | 파일 하나 안에서 선택할 함수 이름. `()`를 붙이지 않는다. 생략하면 파일 전체를 측정한다. |
 | `--tests` | 실행할 테스트 파일. 여러 파일이면 옵션을 반복한다. 생략하면 설정된 테스트 묶음을 실행한다. |
-| `--format json` | 구조화된 결과 출력. 생략하면 텍스트를 출력한다. |
+| `--format json` | 구조화된 결과 출력. 기본값이므로 생략할 수 있다. |
+| `--format text` | 사람이 읽는 텍스트 요약으로 출력한다. |
 
 경로는 프로젝트 루트 기준이다. `details.scope.files`, `functions`, `tests`, `testSelection`에서 실제 선택을 확인한다. `functions: []`는 특정 함수로 좁히지 않았다는 뜻이다. 파일·함수·테스트를 선택한 검사는 변경 여부와 관계없이 실행한다.
 

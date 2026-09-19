@@ -94,8 +94,6 @@ class SetupCommandTests(unittest.TestCase):
             str(self.sources),
             "--tools",
             str(self.tools),
-            "--format",
-            "json",
             *extra,
         )
 

@@ -207,7 +207,7 @@ ls -ld "$SENTINEL_PROJECT"
 ```bash
 # setup = 최초 설정; --project = 검사할 폴더; --tools = 언어 도구 보관 폴더
 # --crap-max 8 = 복잡도·테스트 범위 점수 상한; --mutation-min 90 = 변이 탐지 비율 90%
-# --format json = 구조화된 결과 출력
+# --format json = 구조화된 결과 출력(기본값이므로 생략 가능). 텍스트 요약은 --format text.
 "$SENTINEL_EXECUTABLE" setup --project "$SENTINEL_PROJECT" --tools "$SENTINEL_TOOLS" --language python --crap-max 8 --mutation-min 90 --format json
 ```
 

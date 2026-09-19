@@ -206,7 +206,7 @@ class WorkspaceTests(unittest.TestCase):
     def test_plan_selects_modules_without_writing_tools(self):
         workspace(self.project, [module("api", "python", "api"), module("web", "typescript", "web")])
         tools = self.project / "tools"
-        completed = cli("plan", "--project", str(self.project), "--language", "python", "--tools", str(tools), "--format", "json")
+        completed = cli("plan", "--project", str(self.project), "--language", "python", "--tools", str(tools))
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(payload["selection"], "partial")
@@ -411,7 +411,7 @@ class CheckTests(unittest.TestCase):
         return digest
 
     def run_check(self, *extra):
-        return cli("check", "--project", str(self.project), "--tools", str(self.tools), "--format", "json", *extra)
+        return cli("check", "--project", str(self.project), "--tools", str(self.tools), *extra)
 
     def test_default_check_does_not_execute_and_is_not_admitted(self):
         digest = self.install("python")
@@ -427,7 +427,7 @@ class CheckTests(unittest.TestCase):
     def test_doctor_verifies_bundle_without_quality_execution(self):
         digest = self.install("python")
         workspace(self.project, [module("one", "python", "one", digest=digest)])
-        completed = cli("doctor", "--project", str(self.project), "--tools", str(self.tools), "--format", "json")
+        completed = cli("doctor", "--project", str(self.project), "--tools", str(self.tools))
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(payload["results"][0]["status"], "ready")

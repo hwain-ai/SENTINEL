@@ -1,6 +1,6 @@
 ## 실행 파일과 프로젝트 경로를 분리한 기본 호출
 
-`SENTINEL_EXECUTABLE`은 확인된 실행 파일, `SENTINEL_PROJECT`는 프로젝트 루트다. `plan`은 설정된 모듈 목록, `doctor`는 설치 상태, `check`는 실제 검사다. `--format json`은 구조화된 결과를 요청한다.
+`SENTINEL_EXECUTABLE`은 확인된 실행 파일, `SENTINEL_PROJECT`는 프로젝트 루트다. `plan`은 설정된 모듈 목록, `doctor`는 설치 상태, `check`는 실제 검사다. `setup`을 포함한 네 명령 모두 JSON이 기본 출력이므로 아래의 `--format json`은 생략할 수 있다. 텍스트 요약은 `--format text`로 요청한다.
 
 ```sh
 "$SENTINEL_EXECUTABLE" plan --project "$SENTINEL_PROJECT" --format json

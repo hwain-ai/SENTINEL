@@ -14,22 +14,23 @@ description: SENTINEL로 기능 파일·함수와 테스트를 선택해 CRAP·m
 아래는 프로젝트 루트에서 실행하는 예시다. 다른 위치에서는 `--project <프로젝트 경로>`를 붙인다. 예시 경로는 실제 프로젝트에 맞게 바꾼다.
 
 ```sh
-sentinel check --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py --format json
+sentinel check --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py
 ```
 
 1. `sentinel check`: 검사 실행.
 2. `--file`: 점수를 측정할 기능 파일. 여러 파일이면 반복한다.
 3. `--function`: 해당 파일의 함수 이름. `()` 없이 적고, 생략하면 파일 전체를 검사한다. 함수 선택에는 파일 하나를 지정한다. 같은 이름이 여럿이면 결과의 정확한 함수 식별자를 사용한다.
 4. `--tests`: 실행할 테스트 파일. 여러 개면 반복한다. 생략하면 프로젝트에 설정된 테스트 묶음을 실행한다.
-5. `--format json`: 에이전트가 읽을 수 있는 구조화된 결과.
+
+출력은 기본적으로 JSON이다. `--format json`은 생략할 수 있고, 텍스트 요약이 필요할 때만 `--format text`를 붙인다.
 
 ```sh
 # 기능 파일 전체를 두 테스트 파일로 검사한다.
-sentinel check --file src/pricing.py --tests tests/test_pricing.py --tests tests/test_boundary.py --format json
+sentinel check --file src/pricing.py --tests tests/test_pricing.py --tests tests/test_boundary.py
 # Git 기준 변경된 기능 파일들을 검사한다. 변경 주체가 누구인지는 구분하지 않는다.
-sentinel check --changed --format json
+sentinel check --changed
 # 설정에 포함된 기능 코드 전체를 검사한다.
-sentinel check --all --format json
+sentinel check --all
 ```
 
 `--all`, `--changed`, `--file`은 함께 쓰지 않는다. 파일·테스트 경로는 프로젝트 기준이다. 필요하면 `--module` 또는 `--language`로 범위를 좁힌다. 에이전트는 요청된 작업 안에서 검사 대상을 스스로 선택할 수 있다. 없는 파일·함수, 지원하지 않는 선택은 오류로 처리하며 다른 범위를 검사했다고 대체하지 않는다.
