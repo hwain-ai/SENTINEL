@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Runner](https://img.shields.io/badge/runner-0.4.0-green)](pyproject.toml)
-[![Plugin](https://img.shields.io/badge/plugin-0.4.1-green)](plugins/sentinel/.codex-plugin/plugin.json)
+[![Plugin](https://img.shields.io/badge/plugin-0.5.0-green)](plugins/sentinel/.codex-plugin/plugin.json)
 [![Python](https://img.shields.io/badge/python-3.9%2B-yellow)](pyproject.toml)
 
 **코딩 에이전트가 파일·함수와 테스트를 골라 검사하고, 점수와 실패 위치를 JSON으로 받는 도구입니다.** Python·TypeScript·Java를 지원합니다.
@@ -35,7 +35,7 @@ flowchart TD
     S["SENTINEL<br/>언어별 검사기 실행"]
     J["JSON: exitCode: 2<br/>selection: partial<br/>status: qualityFailed<br/>점수와 실패 위치 포함"]
     R["코딩 에이전트<br/>결과 설명"]
-    F["기본 호출·fix는<br/>기준 미달 시 수정·재검사<br/>check는 결과 보고로 종료"]
+    F["기본 호출은<br/>기준 미달 시 수정·재검사<br/>check는 결과 보고로 종료"]
     U --> A --> C --> S --> J --> R
     R --> F --> C
 ```
@@ -44,13 +44,13 @@ flowchart TD
 |---|---|
 | 검사할 프로젝트와 원하는 작업을 알려 줍니다. | 소스·테스트 위치를 찾아 검사 범위를 정합니다. |
 | 설치할 환경과 언어를 알려 주고 설치를 요청합니다. | 실행기와 필요한 언어 도구를 설치하고 설정을 확인합니다. |
-| 기본 호출·fix 또는 점수 확인용 check를 선택합니다. | 기본 호출·fix는 기준 통과까지 수정하며 check는 결과만 보고합니다. |
+| 기본 호출 또는 점수 확인용 check를 선택합니다. | 기본 호출은 기준 통과까지 수정하며 check는 결과만 보고합니다. |
 
 관련 테스트를 고르는 주체는 코딩 에이전트입니다. SENTINEL은 전달받은 파일과 테스트를 실행하고 측정값을 돌려줍니다.
 
 ## 점수 목표 참고 자료
 
-[CRAP·mutation과 기능 해결의 상관관계, 황화인(PDF 8쪽)](docs/evidence/crap-mutation-function-study.pdf)은 Prime Agent와 DeepSeek로 6개 목표 조건을 총 54회 비교한 보고서입니다. CRAP 8·mutation 90% 조건인 C그룹은 9회 모두 두 점수 기준을 기록했고, 기능 해결은 5/9회였습니다. 그룹별 측정값과 실험 조건은 [실험 자료 안내](docs/evidence/quality-goals-study.md)에 정리했습니다.
+기본값은 Prime Agent와 DeepSeek로 6개 목표 조건을 총 54회 비교 테스트한 결과, 기능 해결률이 가장 높았던 그룹 중 작업 시간이 가장 짧았던 **CRAP 8 이하·mutation 90% 이상**으로 잡았습니다. [CRAP·mutation과 기능 해결의 상관관계, 황화인(PDF 8쪽)](docs/evidence/crap-mutation-function-study.pdf)
 
 ## 기술 스택
 
@@ -88,7 +88,7 @@ codex plugin add sentinel@sentinel
 
 ### 2. 첫 사용 준비
 
-새 대화에서 사용하는 호스트의 명령을 입력합니다. 이 문서의 스킬 구성은 플러그인 **0.4.1** 기준입니다.
+새 대화에서 사용하는 호스트의 명령을 입력합니다. 이 문서의 스킬 구성은 플러그인 **0.5.0** 기준입니다.
 
 | Claude Code | Codex |
 |---|---|
@@ -129,26 +129,25 @@ Claude Code는 `/sentinel:<이름>`, Codex는 `$sentinel:<이름>`으로 호출�
 
 | 스킬 이름 | 하는 일 |
 |---|---|
-| `sentinel` · `fix` | 기존 CRAP·mutation 기준을 만족할 때까지 코드·테스트 수정과 재검사 |
+| `sentinel` | 기존 CRAP·mutation 기준을 만족할 때까지 코드·테스트 수정과 재검사 |
 | `check` | 실제 검사를 실행해 점수·위치·근거만 보고. 기능 코드·테스트 수정 없음 |
 | `start` | 설치·초기 설정과 준비 상태 확인 |
 | `version` | 플러그인·실행기·언어 도구의 버전과 설치·승인 상태 확인 |
 | `update` | 현재 사용하는 SENTINEL 구성요소를 공식 배포된 최신 버전으로 갱신 |
-| `upgrade-tools` | 제작 저장소에서 원본 도구 버전·잠금 파일·어댑터·검증을 갱신 |
 
 Claude Code에서 입력하는 예시입니다. Codex에서는 앞의 `/`를 `$`로 바꿉니다.
 
 ```text
 /sentinel:sentinel src/pricing.py의 calculate_discount 함수를 기준에 맞춰 줘.
-/sentinel:fix 설정된 전체 범위가 통과할 때까지 수정해 줘.
+/sentinel:sentinel 설정된 전체 범위가 통과할 때까지 수정해 줘.
 /sentinel:check src/pricing.py의 현재 점수와 실패 위치만 보여 줘.
 /sentinel:version
 /sentinel:update
 ```
 
-새 설정의 기본값은 CRAP 8 이하·mutation 90% 이상이며 기존 프로젝트 기준이 있으면 그 값을 유지합니다. `fix`에 다른 목표 수치를 명시할 수도 있습니다. 에이전트는 기준을 낮추거나 검사 대상을 제외해서 통과시키지 않습니다. 중간에 좁은 범위로 확인하더라도 마지막에는 요청한 원래 범위로 다시 검사합니다.
+새 설정의 기본값은 CRAP 8 이하·mutation 90% 이상이며 기존 프로젝트 기준이 있으면 그 값을 유지합니다. 기본 호출에 다른 목표 수치를 명시할 수도 있습니다. 에이전트는 기준을 낮추거나 검사 대상을 제외해서 통과시키지 않습니다. 중간에 좁은 범위로 확인하더라도 마지막에는 요청한 원래 범위로 다시 검사합니다.
 
-`version` 스킬은 실행기 버전 번호(`sentinel --version`)와 프로젝트의 도구 설치 상태(`sentinel version`)를 확인합니다. 실행기 0.4.0 이상을 사용합니다. 설치·업데이트·품질 검사를 자동으로 실행하지 않습니다. `update`는 프로젝트 코드·테스트·품질 기준을 유지하며, 원본 도구의 새 버전을 검증하는 제작자 작업은 `upgrade-tools`로 구분합니다.
+`version` 스킬은 실행기 버전 번호(`sentinel --version`)와 프로젝트의 도구 설치 상태(`sentinel version`)를 확인합니다. 실행기 0.4.0 이상을 사용합니다. 설치·업데이트·품질 검사를 자동으로 실행하지 않습니다. `update`는 프로젝트 코드·테스트·품질 기준을 유지하며 공식 배포판으로 갱신합니다.
 
 ## 에이전트가 실행하는 명령
 

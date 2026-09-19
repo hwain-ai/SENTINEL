@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "SENTINEL 품질 검사(CRAP 점수·변이 검사, Python·TypeScript·Java)를 sentinel 명령으로 부르는 플러그인 마켓플레이스",
-    "version": "0.4.1"
+    "version": "0.5.0"
   },
   "plugins": [
     {

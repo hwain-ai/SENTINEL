@@ -51,4 +51,4 @@ CI는 일반 브랜치 push에서 이전 원격 커밋과 제출 커밋을 비�
 
 `start`의 설치·초기 설정과 `sentinel`의 검사·수정 지침을 구분한다. 공통 설치 절차는 하나의 참고 문서를 사용하며, `start-context` 규칙은 초기 설정이나 기본 기준이 바뀔 때 start 지침도 확인하도록 연결한다.
 
-기본 `sentinel`·`fix`는 수정까지, `check`는 측정만 수행한다. 공개 스킬의 역할이 바뀌면 `skill-usage` 규칙에 따라 README를 함께 갱신한다. 저자가 공개한 실험 자료는 `docs/evidence/`에 원문을 보존하고, 설명 문서에 출처 페이지와 관측값을 적는다. PDF를 교체하면 실험 설명과 README도 확인한다.
+기본 `sentinel`은 수정까지, `check`는 측정만 수행한다. 공개 스킬은 `sentinel`·`check`·`start`·`version`·`update`이며, 개인 유지보수 스킬은 배포 폴더에 넣지 않는다. 공개 스킬의 역할이 바뀌면 `skill-usage` 규칙에 따라 README를 함께 갱신한다. 저자가 공개한 실험 자료는 `docs/evidence/`에 원문을 보존하고, 설명 문서에 출처 페이지와 관측값을 적는다. PDF를 교체하면 실험 설명과 README도 확인한다.

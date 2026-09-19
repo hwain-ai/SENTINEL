@@ -16,16 +16,15 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 
 이미 실행기와 프로젝트 설정이 있다면 새 대화에서 SENTINEL 스킬을 사용하고, **신뢰할 실행 파일·프로젝트의 절대 경로**를 알려 주세요. 별도 도구 폴더를 사용했다면 그 경로도 지정합니다. Windows에서는 WSL 배포판 이름과 Linux 경로를 전달합니다. 실제 요청문은 위 3단계에 있습니다.
 
-플러그인 `0.4.1`은 다음 스킬을 제공합니다. Claude Code는 `/sentinel:<이름>`, Codex는 `$sentinel:<이름>`으로 호출합니다.
+플러그인 `0.5.0`은 다음 스킬을 제공합니다. Claude Code는 `/sentinel:<이름>`, Codex는 `$sentinel:<이름>`으로 호출합니다.
 
 | 스킬 | 동작 |
 |---|---|
-| [sentinel](skills/sentinel/SKILL.md) · [fix](skills/fix/SKILL.md) | 기준 통과까지 코드·테스트 수정과 재검사 |
+| [sentinel](skills/sentinel/SKILL.md) | 기준 통과까지 코드·테스트 수정과 재검사 |
 | [check](skills/check/SKILL.md) | 실제 점수 측정과 결과 보고만 수행 |
 | [start](skills/start/SKILL.md) | 설치·초기 설정 후 준비 상태 보고 |
 | [version](skills/version/SKILL.md) | 설치 버전과 승인 상태 확인 |
 | [update](skills/update/SKILL.md) | 사용 중인 구성요소를 공식 배포판으로 갱신 |
-| [upgrade-tools](skills/upgrade-tools/SKILL.md) | 제작 저장소에서 원본 도구 업그레이드·검증 |
 
 기본 호출은 수정까지 수행합니다. 측정만 원할 때는 `check`를 명시합니다. `version` 스킬은 `sentinel --version`으로 실행기 버전 번호를, `sentinel version`으로 설치 상태를 확인합니다. 실행기 0.4.0 이상이 필요합니다.
 
@@ -52,12 +51,12 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 - `.claude-plugin/plugin.json`: Claude Code용 설정
 - `skills/start/SKILL.md`: 두 호스트가 함께 사용하는 설치·초기 설정 지침
 - `skills/sentinel/SKILL.md`: 기본 반복 수정과 목적별 스킬 연결
-- `skills/check/`, `skills/fix/`, `skills/version/`, `skills/update/`, `skills/upgrade-tools/`: 목적별 지침
+- `skills/check/`, `skills/version/`, `skills/update/`: 목적별 지침
 - `skills/sentinel/references/`: 공통 측정·수정·설치·갱신 절차
 
 두 설정은 같은 `./skills/`를 사용합니다. 저장소 루트의 `.agents/plugins/marketplace.json`과 `.claude-plugin/marketplace.json`이 이 폴더를 가리킵니다. 로컬 소스를 마켓플레이스로 등록할 때는 이 폴더 자체가 아닌 **SENTINEL 저장소 루트**를 지정합니다.
 
-플러그인은 사용 지침을 제공합니다. 첫 호출에서 에이전트가 실행기와 언어 도구를 준비하고, 기본 호출과 `fix`에는 기준을 유지하며 수정·재검사를 반복하고 `check`는 측정 결과만 보고합니다. Linux·macOS에서는 직접 실행하고 Windows에서는 WSL을 사용합니다.
+플러그인은 사용 지침을 제공합니다. 첫 호출에서 에이전트가 실행기와 언어 도구를 준비하고, 기본 호출에는 기준을 유지하며 수정·재검사를 반복하고 `check`는 측정 결과만 보고합니다. Linux·macOS에서는 직접 실행하고 Windows에서는 WSL을 사용합니다.
 
 ## 소스 검증
 

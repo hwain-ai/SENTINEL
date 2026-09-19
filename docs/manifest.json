@@ -42,20 +42,12 @@
       "summary": "check의 점수 측정·결과 보고 전용 동작"
     },
     {
-      "path": "plugins/sentinel/skills/fix/SKILL.md",
-      "summary": "기본 호출과 같은 기준 통과까지 수정·재검사"
-    },
-    {
       "path": "plugins/sentinel/skills/version/SKILL.md",
       "summary": "플러그인·실행기·언어 도구 버전과 설치 상태 확인"
     },
     {
       "path": "plugins/sentinel/skills/update/SKILL.md",
       "summary": "현재 설치한 SENTINEL 구성요소의 공식 배포판 갱신"
-    },
-    {
-      "path": "plugins/sentinel/skills/upgrade-tools/SKILL.md",
-      "summary": "제작 저장소의 원본 도구 버전·잠금·어댑터·승인 갱신"
     },
     {
       "path": "plugins/sentinel/skills/sentinel/references/measurement.md",

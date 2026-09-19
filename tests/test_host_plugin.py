@@ -74,12 +74,12 @@ class HostPluginStructureTests(unittest.TestCase):
                 self.assertTrue(manifest_path.is_file(), f"{manifest_path.parent.name} plugin package is missing")
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 self.assertEqual(manifest["name"], "sentinel")
-                self.assertEqual(manifest["version"], "0.4.1")
+                self.assertEqual(manifest["version"], "0.5.0")
                 self.assertEqual(manifest["skills"], "./skills/")
         self.assertTrue(SKILL_PATH.is_file(), "Shared SENTINEL skill is missing")
         self.assertEqual(
             {path.parent.name for path in (PLUGIN_ROOT / "skills").glob("*/SKILL.md")},
-            {"sentinel", "start", "check", "fix", "version", "update", "upgrade-tools"},
+            {"sentinel", "start", "check", "version", "update"},
         )
 
     def test_user_facing_descriptions_and_starter_prompts_are_korean(self):
