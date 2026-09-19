@@ -74,7 +74,7 @@ class HostPluginStructureTests(unittest.TestCase):
                 self.assertTrue(manifest_path.is_file(), f"{manifest_path.parent.name} plugin package is missing")
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 self.assertEqual(manifest["name"], "sentinel")
-                self.assertEqual(manifest["version"], "0.1.1")
+                self.assertEqual(manifest["version"], "0.2.0")
                 self.assertEqual(manifest["skills"], "./skills/")
         self.assertTrue(SKILL_PATH.is_file(), "Shared SENTINEL skill is missing")
 
@@ -184,7 +184,7 @@ class HostPluginCommandContractTests(unittest.TestCase):
             *extra,
         )
 
-    def test_plan_reports_all_configured_without_certification(self):
+    def test_plan_reports_all_configured_without_quality_execution(self):
         self.configure_two_modules(install_python=False, install_typescript=False)
         completed = self.run_command("plan")
         payload = json.loads(completed.stdout)
@@ -192,16 +192,16 @@ class HostPluginCommandContractTests(unittest.TestCase):
         self.assertEqual(payload["selection"], "allConfigured")
         self.assertEqual(payload["moduleCount"], 2)
         self.assertEqual([item["status"] for item in payload["results"]], ["planned", "planned"])
-        self.assertFalse(payload["certified"])
+        self.assertNotIn("certified", payload)
 
-    def test_doctor_reports_installed_tools_ready_but_not_certified(self):
+    def test_doctor_reports_ready_without_quality_execution(self):
         _, _, python_counter, typescript_counter = self.configure_two_modules()
         completed = self.run_command("doctor")
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual([item["status"] for item in payload["results"]], ["ready", "ready"])
-        self.assertTrue(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertFalse(python_counter.exists())
         self.assertFalse(typescript_counter.exists())
 
@@ -215,8 +215,8 @@ class HostPluginCommandContractTests(unittest.TestCase):
             [item["status"] for item in payload["results"]],
             ["backendNotAdmitted", "backendNotAdmitted"],
         )
-        self.assertFalse(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertNotEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertFalse(python_counter.exists())
         self.assertFalse(typescript_counter.exists())
 
@@ -226,8 +226,8 @@ class HostPluginCommandContractTests(unittest.TestCase):
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 5, completed.stderr)
         self.assertEqual([item["status"] for item in payload["results"]], ["ready", "dependencyError"])
-        self.assertFalse(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertNotEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertFalse(python_counter.exists())
         self.assertFalse(typescript_counter.exists())
 
@@ -252,7 +252,7 @@ class HostPluginCommandContractTests(unittest.TestCase):
             payload["results"],
             [{"moduleId": "web", "language": "typescript", "status": "planned", "exitCode": 0}],
         )
-        self.assertFalse(payload["certified"])
+        self.assertNotIn("certified", payload)
 
     def test_relocated_plugin_and_project_paths_with_spaces_keep_argument_boundaries(self):
         relocated = self.base / "relocated plugin with spaces"

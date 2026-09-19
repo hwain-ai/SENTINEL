@@ -38,7 +38,49 @@ sentinel check --file src/pricing.py --function calculate_discount --tests tests
 
 분모에는 해당 범위의 모든 변이 상태가 포함된다. 실행되지 않은 변이와 실행 오류를 분모에서 빼서 점수를 높이지 않는다. 변이가 없으면 `score`는 `null`이다. 파일·함수별 묶음은 `pass: null`, `reason: "zeroMutants"`를 표시하고, 전체 mutation 판정은 통과하지 않는다. 미측정을 0점이나 100점으로 해석하지 않는다.
 
-## `pass`, `status`, `certified`의 차이
+## 명령 종료 결과, 검사 범위와 품질 판정
+
+아래 JSON은 필요한 필드만 발췌한 예시다.
+
+```json
+{
+  "exitCode": 0,
+  "selection": "partial",
+  "results": [{ "status": "passed" }]
+}
+```
+
+명령은 종료 코드 0으로 끝났고 선택한 범위의 품질 검사가 통과했다. `partial`이므로 전체 코드의 통과로 확대하지 않는다. 파일·함수·테스트·변경분 또는 일부 모듈·언어를 선택하면 `partial`이다. 변경분이 모든 모듈에 있어도 `--changed`는 부분 검사다. 모듈·언어 옵션만 사용했고 그 결과가 설정된 모든 모듈을 포함한다면 `allConfigured`다.
+
+```json
+{
+  "exitCode": 0,
+  "selection": "allConfigured",
+  "results": [{ "status": "passed" }]
+}
+```
+
+설정된 전체 범위에서 모든 모듈 결과가 `passed`라면 그 범위가 통과했다. 설정에서 제외한 파일까지 검사했다는 뜻은 아니다.
+
+```json
+{
+  "exitCode": 0,
+  "selection": "partial",
+  "results": [{ "status": "noChanges" }]
+}
+```
+
+검사할 변경 기능 코드가 없어 건너뛴 경우다. 종료 0이어도 실제 품질 검사를 통과한 결과가 아니다.
+
+```json
+{
+  "exitCode": 2,
+  "selection": "partial",
+  "results": [{ "status": "qualityFailed" }]
+}
+```
+
+측정 결과가 품질 기준에 미달했다. 검사기 고장을 뜻하지는 않는다. 아래의 `details`는 `results[].details`를 줄여 쓴 표기다.
 
 | 위치 | 판단하는 내용 |
 |---|---|
@@ -46,30 +88,30 @@ sentinel check --file src/pricing.py --function calculate_discount --tests tests
 | `details.mutation.functions[].pass` | 그 함수의 변이 탐지율이 기준을 충족했는지 여부 |
 | `details.mutation.files[].pass` | 그 파일의 변이 탐지율이 기준을 충족했는지 여부 |
 | `details.mutation.pass` | 전체 mutation 기준 충족 여부. 점수 외에 허용되지 않은 제외도 확인한다. |
-| 최상위 `pass` | 명령 전체의 최종 성공 여부. `exitCode`가 `0`일 때만 `true`. |
+| 최상위 `exitCode` | 명령 종료 코드. 종료 0이어도 noChanges는 미검사. |
 | `results[].status` | 모듈별 검사 통과·기준 미달·미검사·실행 오류 구분 |
-| 최상위 `certified` | 승인된 도구로 설정된 전체 범위를 실제 검사해 통과했는지 여부 |
+| 최상위 `selection` | 전체 설정 범위(`allConfigured`) 또는 선택·변경분 범위(`partial`) |
 
-최상위 `pass`는 검사기가 정상 작동했는지만 나타내는 값이 아니다. 검사를 정상적으로 마쳐도 품질 기준에 미달하면 `false`다. 실행 오류나 취소, 승인 조건 미충족도 `false`가 된다.
+최상위 성공 불리언은 없다. 명령 종료 결과는 `exitCode`, 품질 판정은 `results[].status`, 점수와 근거는 `results[].details`로 읽는다. 내부 CRAP·mutation의 `pass`는 해당 품질 기준 충족 여부다.
 
 | 결과 | 해석 |
 |---|---|
 | `status: "passed"` | 해당 모듈의 검사 범위가 품질 기준을 통과했다. |
 | `status: "qualityFailed"` | 측정 결과가 나왔으나 품질 기준에 미달했다. |
-| `status: "noChanges"`, `pass: true` | 검사할 변경 기능 코드가 없어 건너뛰었다. 실제 검사 통과가 아니다. |
+| `status: "noChanges"`, `exitCode: 0` | 검사할 변경 기능 코드가 없어 건너뛰었다. 실제 검사 통과가 아니다. |
 | `status: "baselineFailed"` | 원래 코드의 테스트부터 실패했다. 먼저 그 실패를 해결한다. |
 | `status: "toolError"` 또는 `"backendError"` | 검사 도구 실행에 문제가 생겼다. 제공된 `diagnostic`을 확인한다. |
 | `status: "backendNotAdmitted"` | 도구가 승인 목록에 없어 기본 검사를 실행하지 않았다. |
 | `status: "cancelled"` | 검사가 취소되었다. |
 
-`plan`과 `doctor`의 성공도 품질 검사를 실행했다는 뜻은 아니다. `--file`, `--function`, `--tests`, `--changed` 또는 일부 모듈·언어를 선택한 결과는 `certified: false`다. 실험 모드에서도 전체 인증을 발급하지 않는다. `admitted`는 사용한 도구의 승인 여부로, 코드 점수와는 별도다.
+`plan`과 `doctor`의 종료 0은 각각 범위 확인·설치 확인의 성공이다. `admitted`는 사용한 도구의 승인 여부다. `--experimental`은 모든 품질 결과가 `passed`여도 종료 6을 반환한다.
 
 ## 출력 예시
 
-아래는 두 함수가 있는 검증용 Python 파일의 측정 사례다. `add_one`은 테스트가 실행했고 `unrelated`는 실행하지 않았다. 텍스트 출력은 다음과 같다.
+아래는 두 함수가 있는 검증용 Python 파일의 측정 사례를 현재 출력 형식으로 표시한 것이다. `add_one`은 테스트가 실행했고 `unrelated`는 실행하지 않았다.
 
 ```text
-SENTINEL check: exit 2, certified=false
+SENTINEL check: exit 2, selection=partial
 python [python]: qualityFailed (exit 2), not admitted
   CRAP max=2 (limit=8)
   mutation=50% (2/4, minimum=90%)
@@ -102,3 +144,11 @@ JSON의 `details.mutation.mutants`에는 다음과 같은 근거가 담긴다. �
 `killed`는 테스트가 변이를 발견했다는 뜻이다. `survived`는 변이 실행 후에도 테스트가 통과한 경우, `uncovered`는 해당 위치를 테스트가 실행하지 않은 경우다. `compileError`, `runtimeError`, `toolError` 같은 오류를 탐지 성공으로 합산하지 않는다. 텍스트는 미탐지·오류 기록을 최대 20개까지 보여주며, 전체 기록은 `--format json`으로 확인한다.
 
 에이전트는 미실행 위치를 실행하는 테스트와 기대 결과를 확인하는 검증을 보강한다. 특정 테스트가 반드시 부족하다고 단정하거나, 이 점수를 제품의 모든 요구사항 충족 여부로 확대하지 않는다.
+
+## stdout과 종료 코드
+
+JSON 안의 `exitCode`까지 포함한 JSON 전체가 표준 출력(stdout)이다. 프로세스의 실제 종료 코드는 별도로 전달하며, 일반적인 완료 결과에서는 JSON의 `exitCode`와 같다. 오류 메시지는 표준 오류(stderr)로 전달한다. 잘못된 입력 등 JSON 생성 전 실패에서는 stderr와 종료 코드만 나올 수 있다.
+
+## 출력 형식 변경
+
+통합 CLI·플러그인 0.2.0은 `sentinel-workspace-result-v2`(plan·doctor·check)와 `sentinel-setup-result-v2`(setup)를 사용한다. v1의 최상위 `pass`와 `certified`를 제거했고 대체 성공 불리언은 추가하지 않았다. 기존 호출자는 `exitCode`·`selection`·`results`로 읽도록 수정한다. 내부 CRAP·mutation의 `pass`와 언어 어댑터 프로토콜은 유지한다.

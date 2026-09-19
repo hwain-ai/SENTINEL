@@ -7,7 +7,7 @@
     },
     {
       "path": "docs/results.md",
-      "summary": "검사 범위, inScope·killed·pass·certified의 의미와 실제 출력 예시"
+      "summary": "검사 범위, 명령 성공과 품질 합격의 구분, 점수·위치와 JSON 조각별 해설"
     },
     {
       "path": "docs/references/sentinel-cli-reference.md",

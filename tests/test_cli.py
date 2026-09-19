@@ -182,7 +182,7 @@ class CliBootstrapTests(unittest.TestCase):
     def test_version_is_available(self):
         completed = cli("--version")
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("0.1.1", completed.stdout)
+        self.assertIn("0.2.0", completed.stdout)
 
     def test_help_does_not_resolve_the_current_project(self):
         environment = os.environ.copy()
@@ -211,8 +211,10 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(payload["selection"], "partial")
         self.assertEqual(payload["moduleCount"], 1)
+        self.assertEqual(payload["schemaVersion"], "sentinel-workspace-result-v2")
+        self.assertEqual(set(payload), {"schemaVersion", "command", "selection", "moduleCount", "results", "exitCode"})
         self.assertEqual(payload["results"], [{"moduleId": "api", "language": "python", "status": "planned", "exitCode": 0}])
-        self.assertFalse(payload["certified"])
+        self.assertNotIn("certified", payload)
         self.assertFalse(tools.exists())
 
     def test_duplicate_json_key_is_usage_error(self):
@@ -418,19 +420,19 @@ class CheckTests(unittest.TestCase):
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 6)
         self.assertEqual(payload["results"][0]["status"], "backendNotAdmitted")
-        self.assertFalse(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertNotEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertFalse((self.base / "python-count").exists())
 
-    def test_doctor_verifies_bundle_without_execution_or_certification(self):
+    def test_doctor_verifies_bundle_without_quality_execution(self):
         digest = self.install("python")
         workspace(self.project, [module("one", "python", "one", digest=digest)])
         completed = cli("doctor", "--project", str(self.project), "--tools", str(self.tools), "--format", "json")
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(payload["results"][0]["status"], "ready")
-        self.assertTrue(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertFalse((self.base / "python-count").exists())
 
     def test_doctor_rejects_installed_file_with_relaxed_mode(self):
@@ -442,7 +444,7 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 5)
         self.assertEqual(json.loads(completed.stdout)["results"][0]["status"], "dependencyError")
 
-    def test_two_languages_execute_real_children_but_never_certify(self):
+    def test_experimental_success_remains_a_nonzero_command_result(self):
         python_digest = self.install("python")
         typescript_digest = self.install("typescript")
         workspace(self.project, [module("one", "python", "one", digest=python_digest), module("two", "typescript", "two", digest=typescript_digest)])
@@ -452,8 +454,8 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(payload["selection"], "allConfigured")
         self.assertEqual([item["status"] for item in payload["results"]], ["passed", "passed"])
         self.assertEqual([item["exitCode"] for item in payload["results"]], [0, 0])
-        self.assertFalse(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertNotEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertEqual((self.base / "python-count").read_text(), "1")
         self.assertEqual((self.base / "typescript-count").read_text(), "1")
 

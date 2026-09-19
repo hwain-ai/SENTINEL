@@ -131,18 +131,14 @@ def _envelope(
     command: str,
     selection: str,
     results: List[Dict[str, object]],
-    passed: bool,
     exit_code: int,
-    certified: bool = False,
 ) -> Dict[str, object]:
     return {
-        "schemaVersion": "sentinel-workspace-result-v1",
+        "schemaVersion": "sentinel-workspace-result-v2",
         "command": command,
         "selection": selection,
         "moduleCount": len(results),
         "results": results,
-        "pass": passed,
-        "certified": certified,
         "exitCode": exit_code,
     }
 
@@ -151,8 +147,7 @@ def _emit(payload: Dict[str, object], output_format: str) -> None:
     if output_format == "json":
         _write(sys.stdout, json.dumps(payload, separators=(",", ":"), sort_keys=True) + "\n")
         return
-    certified = "true" if payload["certified"] else "false"
-    lines = [f"SENTINEL {payload['command']}: exit {payload['exitCode']}, certified={certified}"]
+    lines = [f"SENTINEL {payload['command']}: exit {payload['exitCode']}, selection={payload['selection']}"]
     for result in payload["results"]:
         line = f"{result['moduleId']} [{result['language']}]: {result['status']} (exit {result['exitCode']})"
         if "admitted" in result:
@@ -226,21 +221,21 @@ def _run_workspace(args: argparse.Namespace) -> int:
     if args.command == "check":
         original_modules = modules
         modules, selections = resolve_selection(project, modules, args.file, args.function, args.tests, args.changed, args.all)
-        if modules != original_modules or selections:
+        if modules != original_modules or selections or args.changed:
             selection = "partial"
     if args.command == "plan":
-        payload = _envelope("plan", selection, [_result(item, "planned", 0) for item in modules], True, 0)
+        payload = _envelope("plan", selection, [_result(item, "planned", 0) for item in modules], 0)
         _emit(payload, args.format)
         return 0
     admissions = _admissions(args)
     bundles, preflight_results, failed = _preflight(modules, tools, admissions)
     if args.command == "doctor":
         exit_code = 5 if failed else 0
-        payload = _envelope("doctor", selection, preflight_results, not failed, exit_code)
+        payload = _envelope("doctor", selection, preflight_results, exit_code)
         _emit(payload, args.format)
         return exit_code
     if failed:
-        payload = _envelope("check", selection, preflight_results, False, 5)
+        payload = _envelope("check", selection, preflight_results, 5)
         _emit(payload, args.format)
         return 5
     # Bundle-backed modules run in the default check only when their adapter is admitted (CI-verified).
@@ -251,7 +246,7 @@ def _run_workspace(args: argparse.Namespace) -> int:
     }
     if not args.experimental and not any(admitted.values()):
         results = [_result(item, "backendNotAdmitted", 6, False) for item in modules]
-        payload = _envelope("check", selection, results, False, 6)
+        payload = _envelope("check", selection, results, 6)
         _emit(payload, args.format)
         return 6
     # Native Go modules are prepared only when they will run, which is only under --experimental.
@@ -297,7 +292,7 @@ def _run_workspace(args: argparse.Namespace) -> int:
             )
             for module in modules
         ]
-        payload = _envelope("check", selection, results, False, 5)
+        payload = _envelope("check", selection, results, 5)
         _emit(payload, args.format)
         return 5
     observations: List[Observation] = []
@@ -343,11 +338,7 @@ def _run_workspace(args: argparse.Namespace) -> int:
     if args.experimental and exit_code == 0:
         # An experimental run may include unadmitted adapters, so a clean run is still not admitted.
         exit_code = 6
-    passed = exit_code == 0
-    certified = (passed and selection == "allConfigured" and not changed_mode and not selections
-                 and all(admitted[module.module_id] for module in modules)
-                 and all(observation.status == "passed" for observation in observations))
-    payload = _envelope("check", selection, results, passed, exit_code, certified)
+    payload = _envelope("check", selection, results, exit_code)
     _emit(payload, args.format)
     return exit_code
 

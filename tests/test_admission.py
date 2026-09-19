@@ -105,7 +105,7 @@ class AdmittedCheckTests(unittest.TestCase):
     def run_command(self, command, *extra):
         return cli(command, "--project", str(self.project), "--tools", str(self.tools), "--admission", str(self.admission), "--format", "json", *extra)
 
-    def test_admitted_bundle_runs_in_the_default_check_and_certifies_a_pass(self):
+    def test_admitted_bundle_reports_a_successful_full_check(self):
         digest, entrypoint = self.install("python")
         write_json(self.admission, document(entry(digest=entrypoint)))
         workspace(self.project, [module("one", "python", "one", digest=digest)])
@@ -118,8 +118,11 @@ class AdmittedCheckTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(payload["results"][0]["status"], "passed")
         self.assertEqual(payload["results"][0]["admitted"], True)
-        self.assertTrue(payload["pass"])
-        self.assertTrue(payload["certified"])
+        self.assertEqual(payload["exitCode"], 0)
+        self.assertEqual(payload["schemaVersion"], "sentinel-workspace-result-v2")
+        self.assertEqual(set(payload), {"schemaVersion", "command", "selection", "moduleCount", "results", "exitCode"})
+        self.assertEqual(payload["selection"], "allConfigured")
+        self.assertNotIn("certified", payload)
         self.assertEqual((self.base / "python-count").read_text(), "1")
 
     def test_unadmitted_bundle_never_starts_and_admitted_sibling_still_runs(self):
@@ -135,17 +138,17 @@ class AdmittedCheckTests(unittest.TestCase):
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 6)
         self.assertEqual([item["status"] for item in payload["results"]], ["passed", "backendNotAdmitted"])
-        self.assertFalse(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertNotEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertEqual((self.base / "python-count").read_text(), "1")
         self.assertFalse((self.base / "typescript-count").exists())
 
         experimental = json.loads(self.run_command("check", "--experimental").stdout)
         self.assertEqual([item["status"] for item in experimental["results"]], ["passed", "passed"])
-        self.assertFalse(experimental["certified"])
+        self.assertNotIn("certified", experimental)
         self.assertEqual(experimental["exitCode"], 6)
 
-    def test_admitted_quality_failure_is_reported_but_not_certified(self):
+    def test_quality_failure_is_a_command_failure_with_a_quality_verdict(self):
         digest, entrypoint = self.install("python", behavior="quality_failed")
         write_json(self.admission, document(entry(digest=entrypoint)))
         workspace(self.project, [module("one", "python", "one", digest=digest)])
@@ -154,10 +157,10 @@ class AdmittedCheckTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 2)
         self.assertEqual(payload["results"][0]["status"], "qualityFailed")
         self.assertEqual(payload["results"][0]["admitted"], True)
-        self.assertFalse(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertNotEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
 
-    def test_changed_mode_never_certifies_modules_that_were_not_checked(self):
+    def test_changed_mode_is_partial_even_when_every_module_was_checked(self):
         python_digest, python_entrypoint = self.install("python")
         typescript_digest, typescript_entrypoint = self.install("typescript")
         write_json(self.admission, document(entry(digest=python_entrypoint),
@@ -172,9 +175,10 @@ class AdmittedCheckTests(unittest.TestCase):
         unchanged = self.run_command("check", "--changed")
         payload = json.loads(unchanged.stdout)
         self.assertEqual(unchanged.returncode, 0, unchanged.stderr)
-        self.assertTrue(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertEqual([item["status"] for item in payload["results"]], ["noChanges", "noChanges"])
+        self.assertEqual(payload["selection"], "partial")
         self.assertFalse((self.base / "python-count").exists())
         self.assertFalse((self.base / "typescript-count").exists())
 
@@ -182,15 +186,28 @@ class AdmittedCheckTests(unittest.TestCase):
         mixed = self.run_command("check", "--changed")
         payload = json.loads(mixed.stdout)
         self.assertEqual(mixed.returncode, 0, mixed.stderr)
-        self.assertTrue(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertEqual([item["status"] for item in payload["results"]], ["passed", "noChanges"])
+        self.assertEqual(payload["selection"], "partial")
         self.assertFalse((self.base / "typescript-count").exists())
 
         (self.project / "two" / "source.ts").write_text("const x = 2;\n")
         checked = self.run_command("check", "--changed")
         self.assertEqual(checked.returncode, 0, checked.stderr)
-        self.assertFalse(json.loads(checked.stdout)["certified"])
+        self.assertEqual(json.loads(checked.stdout)["selection"], "partial")
+
+    def test_module_selected_success_reports_partial_scope(self):
+        digest, entrypoint = self.install("python")
+        write_json(self.admission, document(entry(digest=entrypoint)))
+        workspace(self.project, [module("one", "python", "one", digest=digest),
+                                 module("two", "python", "two", digest=digest)])
+        completed = self.run_command("check", "--module", "one")
+        payload = json.loads(completed.stdout)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(payload["selection"], "partial")
+        self.assertEqual(payload["results"][0]["status"], "passed")
+        self.assertNotIn("certified", payload)
 
     def test_adapter_can_report_that_changed_files_contain_no_production_code(self):
         digest, entrypoint = self.install("python", behavior="no_changes")
@@ -204,8 +221,8 @@ class AdmittedCheckTests(unittest.TestCase):
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(payload["results"][0]["status"], "noChanges")
-        self.assertTrue(payload["pass"])
-        self.assertFalse(payload["certified"])
+        self.assertEqual(payload["exitCode"], 0)
+        self.assertNotIn("certified", payload)
         self.assertEqual((self.base / "python-count").read_text(), "1")
 
         full = self.run_command("check")

@@ -1,7 +1,7 @@
 # SENTINEL
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.1-green)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.2.0-green)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.9%2B-yellow)](pyproject.toml)
 
 > 코드의 복잡도와 테스트의 결함 탐지 능력을 함께 검사하는 로컬 품질 검사 도구입니다.
@@ -37,9 +37,9 @@ SENTINEL은 **Python·TypeScript·Java 프로젝트의 코드와 테스트를 �
 - **테스트가 잘못된 코드를 잡아내는지 확인합니다.** 변이 검사(mutation testing)는 코드를 일부러 조금 바꾼 복사본을 만들고 테스트가 이를 발견하는지 확인합니다. 기본 탐지 비율은 90%입니다.
 - **필요한 언어의 검사 환경을 준비합니다.** `setup`이 언어별 검사기와 SDK(컴파일·실행 도구 모음)를 준비하고 프로젝트 설정을 만듭니다.
 - **검사할 파일·함수·테스트를 선택합니다.** 전체 검사와 Git 변경분 검사도 지원합니다. 모듈은 `setup`으로 설정하는 프로젝트 폴더이며, Python 서버와 TypeScript 화면을 각각 지정할 수 있습니다.
-- **품질 통과와 미검사를 구분합니다.** 승인된 도구로 설정된 전체 기능 코드와 기본 테스트 묶음을 검사해 통과해야 `certified=true`입니다. 부분 검사와 변경할 코드가 없어 건너뛴 `noChanges`는 `certified=false`입니다.
+- **검사 범위와 결과를 구분합니다.** `exitCode`는 명령의 종료 코드, `selection`은 전체·부분 범위, `results[].status`는 품질 통과·미달·미검사를 표시합니다.
 
-여기서 인증은 **설정된 검사 범위가 SENTINEL의 품질 기준을 통과했다는 의미**입니다. 설정에서 제외한 파일이나 제품의 모든 버그·보안 문제까지 보장하지는 않습니다.
+여기서 품질 통과는 **검사한 범위가 SENTINEL의 CRAP·mutation 기준을 충족했다는 의미**입니다. 설정에서 제외한 파일이나 제품의 모든 버그·보안 문제까지 보장하지는 않습니다.
 
 ## 기술 스택
 
@@ -160,7 +160,7 @@ SENTINEL_EXECUTABLE="$HOME/.local/share/sentinel/SENTINEL/.venv/bin/sentinel"
 "$SENTINEL_EXECUTABLE" --version
 ```
 
-**확인:** 현재 배포 버전은 `0.1.1`입니다. 설치 시 빌드에 필요한 setuptools를 내려받을 수 있습니다. 이 단계에서는 다른 언어의 SDK나 검사기를 아직 설치하지 않습니다.
+**확인:** 현재 배포 버전은 `0.2.0`입니다. 설치 시 빌드에 필요한 setuptools를 내려받을 수 있습니다. 이 단계에서는 다른 언어의 SDK나 검사기를 아직 설치하지 않습니다.
 
 이 가이드는 `sentinel`을 시스템 PATH에 추가하는 대신 실행 파일의 경로를 사용합니다. 따라서 실행기 폴더로 매번 이동할 필요가 없습니다. 새 Ubuntu/Linux 터미널을 열면 `SENTINEL_EXECUTABLE=...` 줄을 다시 실행하세요.
 
@@ -262,15 +262,15 @@ Python 테스트가 외부 패키지를 사용하면 위 명령에 `--python-req
 |---|---|---|
 | `planned` | 검사할 범위를 읽었음 | 아직 검사하지 않음 |
 | `ready` | 설치 파일 확인을 마침 | 아직 검사하지 않음 |
-| `passed`, `certified=true` | 승인된 도구로 설정된 전체 기능 코드와 기본 테스트 묶음을 검사해 기준을 충족 | 설정된 전체 범위에서 통과 |
-| `passed`, `certified=false` | 일부 파일·함수·테스트·모듈을 선택한 검사 등이 기준을 충족 | 실제 검사한 범위에서 통과 |
+| `allConfigured`, 모든 결과가 `passed` | 설정된 전체 범위를 실제 검사해 기준을 충족 | 설정된 전체 범위에서 통과 |
+| `partial`, 결과가 `passed` | 선택한 파일·함수·테스트·모듈 또는 변경분 검사가 기준을 충족 | 실제 검사한 범위에서 통과 |
 | `qualityFailed` | 검사를 수행했지만 품질 기준에 미달 | 실패 |
-| `noChanges`, `certified=false` | 검사할 변경 코드가 없어 생략 | 미검사 |
+| `noChanges` | 검사할 변경 코드가 없어 생략 | 미검사 |
 | `baselineFailed` | 원래 테스트부터 실패해 검사 조건이 안 됨 | 실패 원인부터 확인 |
 | `dependencyError` | 필요한 설치 파일이나 실행 의존성이 부족함 | 검사 준비 필요 |
 | `backendNotAdmitted` | 현재 도구가 승인 목록에 없어 실행하지 않음 | 승인된 버전으로 갱신 필요 |
 
-최상위 `pass`는 `exitCode=0`일 때 `true`인 명령 성공 표시입니다. 품질 기준 미달과 실행 오류는 모두 `false`가 될 수 있으므로 모듈별 `status`와 `diagnostic`을 함께 확인합니다. `mutation.pass`는 변이 점수의 기준 충족 여부이며, `inScope`는 그 점수 계산에 포함한 변이 개수입니다. [결과 필드와 출력 예시](docs/results.md)에서 각 값의 뜻을 확인하세요.
+`exitCode`가 0이어도 실제 품질 검사를 했다는 뜻은 아닙니다. `results[].status`가 `passed`인지 확인하고, `selection`과 `details.scope`로 그 결과의 범위를 확인합니다. `mutation.pass`는 변이 점수의 기준 충족 여부이며, `inScope`는 점수 계산에 포함한 변이 개수입니다. [JSON 조각별 결과 해석](docs/results.md)에 예시가 있습니다.
 
 <a id="step-6"></a>
 
@@ -359,7 +359,7 @@ Windows에서 WSL 검사기를 쓰면 기본 임시 폴더는 WSL 쪽에 만들�
 
 `--file`은 기능 파일, `--function`은 그 파일 안의 함수, `--tests`는 실행할 테스트 파일입니다. 파일·테스트 옵션은 반복할 수 있고, 함수 선택은 파일 하나와 함께 사용합니다. `--tests`를 생략하면 설정된 테스트 묶음을 사용합니다. 기본 검사는 자동 시간 제한 없이 실행합니다. 테스트만 수정했어도 같은 기능 파일·함수를 지정해 재검사할 수 있습니다.
 
-`results[].details`에는 실제 범위(`scope`), 함수별 CRAP과 파일별 최댓값(`crap`), 파일·함수별 mutation 탐지율과 변이 위치·상태(`mutation`)가 담깁니다. 부분 검사의 `passed`는 그 범위의 통과이며 `certified`는 false입니다. SENTINEL은 LLM 없이 측정값을 반환합니다. [결과 해석](docs/results.md)을 참고하세요.
+`results[].details`에는 실제 범위(`scope`), 함수별 CRAP과 파일별 최댓값(`crap`), 파일·함수별 mutation 탐지율과 변이 위치·상태(`mutation`)가 담깁니다. 부분 검사의 `passed`는 그 범위의 통과입니다. 검사 범위는 `selection`과 `scope`로 확인합니다. SENTINEL은 LLM 없이 측정값을 반환합니다. [결과 해석](docs/results.md)을 참고하세요.
 
 Windows PowerShell에서 직접 호출해야 한다면 다음 형식을 사용합니다. `<...>`는 확인한 실제 Linux 경로로 바꿉니다. 대화로 요청할 때는 플러그인이 이 호출을 구성합니다.
 

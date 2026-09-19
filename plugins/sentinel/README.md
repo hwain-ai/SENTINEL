@@ -33,9 +33,9 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 
 설명만 요청하면 명령을 실행하지 않습니다. 실행기가 없거나 확인할 수 없으면 전제 조건을 설명하고 중단합니다. 이미 준비된 실행기를 통한 언어 SDK 설치는 `setup`으로 수행합니다. 플러그인의 정확한 호출 규칙은 [SKILL.md](skills/sentinel/SKILL.md)에 있습니다.
 
-`doctor`의 `ready`는 실제 품질 통과가 아닙니다. `passed`는 검사한 범위의 통과이며, `certified=true`는 설정된 전체 기능 코드와 전체 테스트 범위의 인증입니다. 파일·함수·테스트·변경분을 선택한 결과는 `certified=false`입니다. `noChanges`는 미검사입니다. [검사 복사본과 원본의 설정·기록 폴더](../../README.md#검사는-어디에서-실행되나요)도 구분하세요.
+`doctor`의 `ready`는 설치 상태 확인입니다. `results[].status`의 `passed`는 검사한 범위의 품질 통과, `noChanges`는 미검사입니다. `selection`은 전체 설정 범위(`allConfigured`)와 선택·변경분 범위(`partial`)를 구분합니다. [검사 복사본과 원본의 설정·기록 폴더](../../README.md#검사는-어디에서-실행되나요)도 구분하세요.
 
-최상위 `pass`는 명령 전체의 성공 여부, `mutation.pass`는 변이 점수의 기준 충족 여부입니다. `inScope`는 점수 계산 대상 변이 개수이고 테스트 개수가 아닙니다. 점수와 실패 위치를 읽는 방법은 [결과 해석과 출력 예시](../../docs/results.md)를 참고하세요.
+`exitCode`는 명령 종료 코드, `selection`은 검사 범위, `results[].status`는 품질 판정입니다. `mutation.pass`는 변이 점수의 기준 충족 여부입니다. `inScope`는 점수 계산 대상 변이 수이며 테스트 수가 아닙니다. [JSON 조각별 결과 해석](../../docs/results.md)을 참고하세요.
 
 ## 플러그인 소스 구성
 

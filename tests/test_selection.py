@@ -1,7 +1,10 @@
 import tempfile
 import unittest
+import json
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from sentinel.cli import build_parser
 from sentinel.errors import SentinelError
@@ -10,6 +13,31 @@ from sentinel.diagnostics import normalize_details, STATES
 
 
 class SelectionTests(unittest.TestCase):
+    def test_output_keeps_quality_flags_only_inside_results(self):
+        from sentinel import cli
+
+        results = [{"moduleId": "py", "language": "python", "status": "qualityFailed", "exitCode": 2,
+                    "details": {"crap": {"pass": True}, "mutation": {"pass": False}}}]
+        payload = cli._envelope("check", "partial", results, 2)
+        output = StringIO()
+        with patch.object(cli.sys, "stdout", output):
+            cli._emit(payload, "json")
+        document = json.loads(output.getvalue())
+        self.assertEqual(set(document), {"schemaVersion", "command", "selection", "moduleCount", "results", "exitCode"})
+        self.assertTrue(document["results"][0]["details"]["crap"]["pass"])
+        self.assertFalse(document["results"][0]["details"]["mutation"]["pass"])
+
+    def test_text_output_shows_selection_without_a_certification_flag(self):
+        from sentinel import cli
+
+        payload = cli._envelope("check", "partial", [{"moduleId": "py", "language": "python", "status": "noChanges", "exitCode": 0}], 0)
+        output = StringIO()
+        with patch.object(cli.sys, "stdout", output):
+            cli._emit(payload, "text")
+        self.assertIn("exit 0, selection=partial", output.getvalue())
+        self.assertIn("noChanges", output.getvalue())
+        self.assertNotIn("certified", output.getvalue())
+
     def test_repeated_test_files_are_preserved_by_the_parser(self):
         args = build_parser().parse_args(["check", "--file", "src/a.py", "--function", "a", "--tests", "tests/a.py", "--tests", "tests/b.py"])
         self.assertEqual(args.tests, ["tests/a.py", "tests/b.py"])

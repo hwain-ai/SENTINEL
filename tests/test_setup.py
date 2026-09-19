@@ -104,7 +104,9 @@ class SetupCommandTests(unittest.TestCase):
         completed = self.setup("--language", "python", "--crap-max", "10", "--mutation-min", "90")
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout)
-        self.assertTrue(payload["pass"])
+        self.assertEqual(payload["exitCode"], 0)
+        self.assertEqual(payload["schemaVersion"], "sentinel-setup-result-v2")
+        self.assertEqual(set(payload), {"schemaVersion", "command", "gate", "results", "workspaceConfig", "projectConfig", "exitCode"})
         self.assertEqual(payload["gate"], {"crapMax": "10", "mutationMin": "90"})
         (result,) = payload["results"]
         self.assertEqual((result["language"], result["status"], result["toolVersion"]), ("python", "installed", "0.3.1"))

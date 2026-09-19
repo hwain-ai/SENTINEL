@@ -2,7 +2,7 @@
 
 처음 설치하는 분은 [README 사용 가이드](../../README.md#사용-가이드)를 먼저 따르세요. 명령 옵션·설정 파일·언어 검사기 연결 규칙은 아래 계약을 따릅니다.
 
-아래 `.venv/bin/sentinel` 예시는 실행기와 검사 프로젝트가 같은 폴더라는 가정입니다. 다른 프로젝트에는 README에서 지정한 실행 파일 경로와 `--project`, `--tools`를 사용합니다. `--experimental`은 개발자 검증용이며 정식 품질 인증을 하지 않습니다.
+아래 `.venv/bin/sentinel` 예시는 실행기와 검사 프로젝트가 같은 폴더라는 가정입니다. 다른 프로젝트에는 README에서 지정한 실행 파일 경로와 `--project`, `--tools`를 사용합니다. `--experimental`은 개발자 검증용이며 검사 기준을 통과해도 종료 6을 반환합니다.
 
 ## 현재 제공하는 것
 
@@ -12,7 +12,7 @@
 |doctor|선택한 설치 파일의 버전·내용 지문을 확인한다. 언어 SDK 자체의 실행 가능성을 확인하는 명령은 아니다.|없음|
 |install|신뢰하는 로컬 도구 묶음을 언어·버전·지문별 독립 폴더에 복사한다.|없음|
 |check|설치와 승인을 먼저 확인한다. 승인된 묶음의 모듈만 실행하고, 승인되지 않은 모듈은 backendNotAdmitted(6)로 두고 시작하지 않는다.|있음. 승인된 묶음만|
-|check --experimental|승인 여부와 상관없이 선택한 도구들을 차례로 호출한다. 정식 인증은 하지 않는다.|있음. 정식 인증은 하지 않음|
+|check --experimental|승인 여부와 상관없이 선택한 도구들을 호출한다. 모두 통과해도 종료 6이다.|있음|
 |setup|언어 저장소·SDK·도구 묶음을 준비하고 두 설정 파일과 기준값을 쓴다. 처음 한 번, 또는 언어를 추가할 때 실행한다.|있음. git·언어 bootstrap 스크립트|
 
 모듈은 따로 검사할 프로젝트 폴더입니다. 예를 들어 Python 서버와 TypeScript 화면을 서로 다른 모듈로 등록할 수 있습니다. 전체 실행은 **등록된 모듈 전체**를 뜻하며, 저장소의 모든 언어나 파일을 자동으로 발견했다는 뜻이 아닙니다.
@@ -48,7 +48,7 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 .venv/bin/sentinel doctor --project . --format json
 # check = 검사 요청(승인된 묶음만 실행). 기본 자동 실행 시간 제한은 없다.
 .venv/bin/sentinel check --project . --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py --format json
-# --experimental = 승인되지 않은 묶음도 실행(결과는 인증되지 않음)
+# --experimental = 승인되지 않은 묶음도 실행(통과해도 종료 6)
 .venv/bin/sentinel check --project . --experimental --format json
 ```
 
@@ -66,7 +66,7 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 
 Java의 함수 선택은 변이 도구의 행 범위를 사용합니다. 선택한 함수와 다른 메서드가 같은 행에 겹치면 선택을 거부하므로 파일 전체를 검사하거나 메서드를 서로 다른 행에 작성합니다.
 
-파일·함수·테스트 선택에는 통합 실행기 `0.1.1`과 Python·TypeScript 어댑터 `0.1.3`, Java 어댑터 `0.1.4`를 사용합니다. 도구의 승인 여부는 [admission.json](../../src/sentinel/admission.json)에 기록된 버전·지문·CI 근거로 확인합니다. 구버전 도구가 선택 요청을 처리하지 못하면 결과를 거부합니다. [실행기와 언어 도구 갱신](../../README.md#승인된-도구-버전-갱신) 후 다시 검사합니다.
+파일·함수·테스트 선택에는 통합 실행기 `0.2.0`과 Python·TypeScript 어댑터 `0.1.3`, Java 어댑터 `0.1.4`를 사용합니다. 도구의 승인 여부는 [admission.json](../../src/sentinel/admission.json)에 기록된 버전·지문·CI 근거로 확인합니다. 구버전 도구가 선택 요청을 처리하지 못하면 결과를 거부합니다. [실행기와 언어 도구 갱신](../../README.md#승인된-도구-버전-갱신) 후 다시 검사합니다.
 
 ## 언어 도구 묶음의 제작·설치 계약
 
@@ -93,11 +93,13 @@ entrypoint도 files에 포함하며 manifest 자체는 제외합니다. 미기�
 
 ## 결과 해석과 안전 경계
 
-출력 예시와 필드별 뜻은 [결과 해석](../results.md)을 참고하세요. 최상위 `pass`는 명령 전체가 종료 코드 0으로 끝났는지, `details.mutation.pass`는 검사 범위의 변이 점수가 기준을 충족했는지 나타냅니다. `details.mutation.functions[].pass`는 해당 함수의 판정입니다. `inScope`는 변이 점수 계산에 포함한 변이 개수이며 테스트 수가 아닙니다. `killed=2`, `inScope=2`이면 탐지율은 `2 / 2 × 100 = 100%`입니다.
+출력 예시와 필드별 뜻은 [결과 해석](../results.md)을 참고하세요. `exitCode`는 명령의 종료 코드, `selection`은 검사 범위, `results[].status`는 품질 판정입니다. `details.mutation.pass`와 `details.mutation.functions[].pass`는 전체 또는 해당 함수의 변이 탐지 기준 충족 여부입니다. `inScope`는 점수 계산에 포함한 변이 수이며 테스트 수가 아닙니다. `killed=2`, `inScope=2`이면 탐지율은 100%입니다.
 
 공통 결과의 selection이 allConfigured이면 등록 모듈 전체, partial이면 일부만 대상으로 했습니다. moduleCount는 그 개수입니다. results에는 모듈 식별자, 언어, 관측 상태, 관측 종료 코드, 승인 여부(admitted), 선택적 진단 코드(diagnostic)와 측정 결과(details)를 담습니다. details.scope는 실제 대상과 테스트 범위이며, crap·mutation에는 함수별·파일별 점수와 실패 위치가 있습니다. 상대 경로와 도구가 확인한 변이 내용은 포함하지만 관계없는 원본 로그를 싣지 않습니다.
 
-plan·doctor의 pass는 각각 범위 확인·설치 확인의 성공일 뿐입니다. doctor의 `admitted`는 묶음이 승인 목록에 있는지 알려 줍니다. 기본 check는 설정된 모든 모듈이 승인됐고 **전체 기능 코드와 기본 테스트 묶음으로 실제 검사되어 `passed`**일 때만 certified=true입니다. `--changed`에서 하나라도 `noChanges`이면 정상 종료(pass=true, 종료 0)할 수 있지만 certified=false이며, 검사하지 않은 코드를 품질 통과로 표시하면 안 됩니다. 파일·함수·테스트·변경분 또는 일부 모듈을 선택한 검사는 통과해도 certified=false입니다. 승인되지 않은 모듈은 실행하지 않고 backendNotAdmitted(6), certified=false입니다. `--experimental`은 언제나 certified=false이며 모두 passed여도 종료 6입니다.
+plan·doctor의 종료 0은 각각 범위 확인·설치 확인의 성공입니다. check에서 `selection: allConfigured`와 모든 결과의 `status: passed`를 함께 확인해야 전체 설정 범위의 통과입니다. 파일·함수·테스트·변경분 또는 일부 모듈·언어 선택은 `selection: partial`입니다. `noChanges`는 종료 0이어도 미검사입니다. `admitted`는 도구 승인 여부이며 미승인 모듈은 기본 검사에서 실행하지 않고 `backendNotAdmitted`(6)를 반환합니다. `--experimental`은 모두 `passed`여도 종료 6입니다.
+
+plan·doctor·check의 JSON은 `sentinel-workspace-result-v2`, setup은 `sentinel-setup-result-v2`입니다. v1의 최상위 `pass`와 `certified`는 삭제했습니다. 명령 성공은 `exitCode == 0`으로 확인하고, 검사 범위와 품질 판정은 `selection`과 `results[].status`로 읽습니다. `results[].details` 안의 CRAP·mutation `pass`와 언어 어댑터 프로토콜은 그대로 유지합니다.
 
 ## 승인 목록(admission.json)
 

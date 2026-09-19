@@ -339,13 +339,12 @@ def run_setup(args) -> Tuple[Dict[str, object], int]:
         project_config = "created" if "created" in config_results else "kept" if config_results else None
         _write_workspace(project, args.config, document, installed, original_bytes)
     payload = {
-        "schemaVersion": "sentinel-setup-result-v1",
+        "schemaVersion": "sentinel-setup-result-v2",
         "command": "setup",
         "gate": gate.as_json(),
         "results": results,
         "workspaceConfig": args.config if passed else None,
         "projectConfig": project_config,
-        "pass": passed,
         "exitCode": 0 if passed else 5,
     }
     return payload, payload["exitCode"]
