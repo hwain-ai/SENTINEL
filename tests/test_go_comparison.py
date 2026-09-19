@@ -43,7 +43,7 @@ class ComparisonWiringTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(SentinelError):
                     go_sandbox._request_arguments(request)
-        for command in ('preflight', 'original', 'help', 'doctor', 'crap', 'history'):
+        for command in ('preflight', 'original', 'help', 'version', 'crap', 'history'):
             with self.subTest(command=command):
                 with self.assertRaises(SentinelError):
                     go_sandbox._request_arguments(self.request(command, 30000))

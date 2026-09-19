@@ -124,12 +124,12 @@ class SetupCommandTests(unittest.TestCase):
         project_config = json.loads((self.project / "sentinel.config.json").read_text())
         self.assertEqual([item["language"] for item in project_config["modules"]], ["python"])
 
-    def test_doctor_and_experimental_check_use_the_installed_bundle_and_pass_the_gate(self):
+    def test_version_and_experimental_check_use_the_installed_bundle_and_pass_the_gate(self):
         python_root = fake_language_source(self.sources, "SENTINEL_PY")
         self.assertEqual(self.setup("--language", "python", "--crap-max", "9").returncode, 0)
-        doctor = cli("doctor", "--project", str(self.project), "--tools", str(self.tools), "--format", "json")
-        self.assertEqual(doctor.returncode, 0, doctor.stderr)
-        self.assertEqual([item["status"] for item in json.loads(doctor.stdout)["results"]], ["ready"])
+        version = cli("version", "--project", str(self.project), "--tools", str(self.tools), "--format", "json")
+        self.assertEqual(version.returncode, 0, version.stderr)
+        self.assertEqual([item["status"] for item in json.loads(version.stdout)["results"]], ["ready"])
 
         check = cli("check", "--project", str(self.project), "--tools", str(self.tools), "--experimental", "--format", "json")
         self.assertEqual(check.returncode, 2, check.stderr)

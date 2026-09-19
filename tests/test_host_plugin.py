@@ -74,7 +74,7 @@ class HostPluginStructureTests(unittest.TestCase):
                 self.assertTrue(manifest_path.is_file(), f"{manifest_path.parent.name} plugin package is missing")
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 self.assertEqual(manifest["name"], "sentinel")
-                self.assertEqual(manifest["version"], "0.4.0")
+                self.assertEqual(manifest["version"], "0.4.1")
                 self.assertEqual(manifest["skills"], "./skills/")
         self.assertTrue(SKILL_PATH.is_file(), "Shared SENTINEL skill is missing")
         self.assertEqual(
@@ -101,8 +101,8 @@ class HostPluginStructureTests(unittest.TestCase):
 
     def test_skill_exposes_exactly_four_portable_command_templates(self):
         commands = command_templates()
-        self.assertEqual(set(commands), {"plan", "doctor", "check", "setup"})
-        for command in ("plan", "doctor", "check"):
+        self.assertEqual(set(commands), {"plan", "version", "check", "setup"})
+        for command in ("plan", "version", "check"):
             with self.subTest(command=command):
                 self.assertEqual(
                     commands[command],
@@ -131,7 +131,7 @@ class HostPluginStructureTests(unittest.TestCase):
 
     def test_duplicate_documented_command_templates_are_rejected(self):
         skill_lines = documentation_lines()
-        for command in ("plan", "doctor", "check", "setup"):
+        for command in ("plan", "version", "check", "setup"):
             with self.subTest(command=command), tempfile.TemporaryDirectory() as directory:
                 copied = Path(directory) / "sentinel"
                 shutil.copytree(PLUGIN_ROOT, copied)
@@ -198,9 +198,9 @@ class HostPluginCommandContractTests(unittest.TestCase):
         self.assertEqual([item["status"] for item in payload["results"]], ["planned", "planned"])
         self.assertNotIn("certified", payload)
 
-    def test_doctor_reports_ready_without_quality_execution(self):
+    def test_version_reports_ready_without_quality_execution(self):
         _, _, python_counter, typescript_counter = self.configure_two_modules()
-        completed = self.run_command("doctor")
+        completed = self.run_command("version")
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual([item["status"] for item in payload["results"]], ["ready", "ready"])

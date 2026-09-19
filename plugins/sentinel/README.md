@@ -16,7 +16,7 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 
 이미 실행기와 프로젝트 설정이 있다면 새 대화에서 SENTINEL 스킬을 사용하고, **신뢰할 실행 파일·프로젝트의 절대 경로**를 알려 주세요. 별도 도구 폴더를 사용했다면 그 경로도 지정합니다. Windows에서는 WSL 배포판 이름과 Linux 경로를 전달합니다. 실제 요청문은 위 3단계에 있습니다.
 
-플러그인 `0.4.0`은 다음 스킬을 제공합니다. Claude Code는 `/sentinel:<이름>`, Codex는 `$sentinel:<이름>`으로 호출합니다.
+플러그인 `0.4.1`은 다음 스킬을 제공합니다. Claude Code는 `/sentinel:<이름>`, Codex는 `$sentinel:<이름>`으로 호출합니다.
 
 | 스킬 | 동작 |
 |---|---|
@@ -27,14 +27,14 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 | [update](skills/update/SKILL.md) | 사용 중인 구성요소를 공식 배포판으로 갱신 |
 | [upgrade-tools](skills/upgrade-tools/SKILL.md) | 제작 저장소에서 원본 도구 업그레이드·검증 |
 
-기본 호출은 수정까지 수행합니다. 측정만 원할 때는 `check`를 명시합니다. `version` 스킬은 기존 CLI의 `--version`·`doctor`를 이용하며 업데이트하지 않습니다.
+기본 호출은 수정까지 수행합니다. 측정만 원할 때는 `check`를 명시합니다. `version` 스킬은 `sentinel --version`으로 실행기 버전 번호를, `sentinel version`으로 설치 상태를 확인합니다. 실행기 0.4.0 이상이 필요합니다.
 
 ## 무엇을 실행하나요?
 
 | 요청 | 사용 명령 | 의미 |
 |---|---|---|
 | 검사 범위 확인 | `plan` | 등록된 대상을 읽음 |
-| 설치 상태 진단 | `doctor` | 설치 파일의 버전·지문·승인 여부 확인 |
+| 설치 상태 진단 | `version` | 설치 파일의 버전·지문·승인 여부 확인 |
 | 프로젝트 최초 설정 | `setup` | 필요한 언어 도구 준비와 설정 파일 생성 |
 | 기본 품질 검사 | `check` | 승인된 검사기로 선택 범위 검사 |
 | 함수와 테스트 선택 | `check --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py` | 지정한 기능 함수와 테스트 검사. 함수명에는 괄호를 붙이지 않음 |
@@ -42,7 +42,7 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 
 설명만 요청하면 명령을 실행하지 않습니다. 실행기가 없으면 첫 호출에서 필요한 정보와 설치 동의를 확인한 뒤 공식 실행기와 언어 도구를 준비합니다. 이미 준비된 실행기를 통한 언어 SDK 설치는 `setup`으로 수행합니다. 플러그인의 정확한 호출 규칙은 [SKILL.md](skills/sentinel/SKILL.md)에 있습니다.
 
-`doctor`의 `ready`는 설치 상태 확인입니다. `results[].status`의 `passed`는 검사한 범위의 품질 통과, `noChanges`는 미검사입니다. `selection`은 전체 설정 범위(`allConfigured`)와 선택·변경분 범위(`partial`)를 구분합니다. [README의 JSON 결과 해석](../../README.md#json-결과-읽기)에서 예시를 확인하세요.
+`version`의 `ready`는 설치 상태 확인입니다. `results[].status`의 `passed`는 검사한 범위의 품질 통과, `noChanges`는 미검사입니다. `selection`은 전체 설정 범위(`allConfigured`)와 선택·변경분 범위(`partial`)를 구분합니다. [README의 JSON 결과 해석](../../README.md#json-결과-읽기)에서 예시를 확인하세요.
 
 `exitCode`는 명령 종료 코드, `selection`은 검사 범위, `results[].status`는 품질 판정입니다. `mutation.pass`는 변이 점수의 기준 충족 여부입니다. `inScope`는 점수 계산 대상 변이 수이며 테스트 수가 아닙니다. [JSON 조각별 결과 해석](../../docs/results.md)을 참고하세요.
 

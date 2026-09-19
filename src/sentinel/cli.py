@@ -88,7 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = CliParser(prog="sentinel")
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command")
-    for name in ("plan", "doctor"):
+    for name in ("plan", "version"):
         _workspace_options(commands.add_parser(name))
     check = commands.add_parser("check")
     _workspace_options(check, include_timeout=True)
@@ -229,9 +229,9 @@ def _run_workspace(args: argparse.Namespace) -> int:
         return 0
     admissions = _admissions(args)
     bundles, preflight_results, failed = _preflight(modules, tools, admissions)
-    if args.command == "doctor":
+    if args.command == "version":
         exit_code = 5 if failed else 0
-        payload = _envelope("doctor", selection, preflight_results, exit_code)
+        payload = _envelope("version", selection, preflight_results, exit_code)
         _emit(payload, args.format)
         return exit_code
     if failed:

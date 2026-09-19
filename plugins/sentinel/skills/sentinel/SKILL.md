@@ -9,6 +9,8 @@ description: 기본 SENTINEL 요청은 CRAP·mutation 기준을 통과할 때까
 
 사용자가 명시한 작업 제한이 기본 동작보다 우선한다.
 
+실행기 0.4.0 이상을 사용한다. 설치 상태 확인 명령은 `sentinel version`이다.
+
 | 요청 | 사용할 지침 |
 |---|---|
 | 기본 호출, 통과할 때까지 수정 | [fix와 공통 절차](references/repair.md) |

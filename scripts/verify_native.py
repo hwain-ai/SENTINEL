@@ -1,4 +1,4 @@
-"""Exercise public setup/plan/doctor/check commands with the admitted language tools."""
+"""Exercise public setup/plan/version/check commands with the admitted language tools."""
 
 import argparse
 import json
@@ -50,8 +50,10 @@ def verify(language, output):
     setup = invoke(folder, "setup", [*common, *options])
     assert setup["results"][0]["status"] == "installed", setup
     assert invoke(folder, "plan", common)["results"][0]["status"] == "planned"
-    doctor = invoke(folder, "doctor", common)["results"][0]
-    assert doctor["status"] == "ready" and doctor["admitted"] is True, doctor
+    version_payload = invoke(folder, "version", common)
+    assert version_payload["command"] == "version", version_payload
+    version = version_payload["results"][0]
+    assert version["status"] == "ready" and version["admitted"] is True, version
     source, function, test, strong, weak = TARGETS[language]
     selection = ["--file", source, "--function", function, "--tests", test]
     selected = invoke(folder, "check", [*common, *selection])

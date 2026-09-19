@@ -84,7 +84,7 @@ class InstallReviewTests(unittest.TestCase):
         self.assertTrue(target.is_dir())
         self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o700)
 
-    def test_doctor_rejects_relaxed_nested_directory_mode(self):
+    def test_version_rejects_relaxed_nested_directory_mode(self):
         source, digest, _ = make_bundle(self.base)
         tools = self.base / "tools"
         self.assertEqual(install_bundle(source, digest, tools).returncode, 0)
@@ -93,7 +93,7 @@ class InstallReviewTests(unittest.TestCase):
         project.mkdir()
         (project / "one").mkdir()
         workspace(project, [module("one", "python", "one", digest=digest)])
-        completed = cli("doctor", "--project", str(project), "--tools", str(tools), "--format", "json")
+        completed = cli("version", "--project", str(project), "--tools", str(tools), "--format", "json")
         self.assertEqual(completed.returncode, 5)
 
     def test_atomic_publish_preserves_empty_collision(self):
@@ -338,7 +338,7 @@ class InputReviewTests(unittest.TestCase):
         stderr = io.StringIO()
         with mock.patch.object(cli_module, "validate_installed_bundle", side_effect=KeyboardInterrupt):
             with contextlib.redirect_stderr(stderr):
-                code = cli_module.main(["doctor", "--project", str(self.project)])
+                code = cli_module.main(["version", "--project", str(self.project)])
         self.assertEqual(code, 8)
         self.assertNotIn("Traceback", stderr.getvalue())
 
@@ -347,7 +347,7 @@ class InputReviewTests(unittest.TestCase):
         stderr = io.StringIO()
         with mock.patch.object(cli_module, "validate_installed_bundle", side_effect=OSError("private raw detail")):
             with contextlib.redirect_stderr(stderr):
-                code = cli_module.main(["doctor", "--project", str(self.project)])
+                code = cli_module.main(["version", "--project", str(self.project)])
         self.assertEqual(code, 3)
         self.assertNotIn("private raw detail", stderr.getvalue())
         self.assertNotIn("Traceback", stderr.getvalue())

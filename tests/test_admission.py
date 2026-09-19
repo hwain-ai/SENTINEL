@@ -110,8 +110,8 @@ class AdmittedCheckTests(unittest.TestCase):
         write_json(self.admission, document(entry(digest=entrypoint)))
         workspace(self.project, [module("one", "python", "one", digest=digest)])
 
-        doctor = json.loads(self.run_command("doctor").stdout)
-        self.assertEqual(doctor["results"][0]["admitted"], True)
+        version = json.loads(self.run_command("version").stdout)
+        self.assertEqual(version["results"][0]["admitted"], True)
 
         completed = self.run_command("check")
         payload = json.loads(completed.stdout)
@@ -131,8 +131,8 @@ class AdmittedCheckTests(unittest.TestCase):
         write_json(self.admission, document(entry(digest=python_entrypoint)))
         workspace(self.project, [module("one", "python", "one", digest=python_digest), module("two", "typescript", "two", digest=typescript_digest)])
 
-        doctor = json.loads(self.run_command("doctor").stdout)
-        self.assertEqual([item["admitted"] for item in doctor["results"]], [True, False])
+        version = json.loads(self.run_command("version").stdout)
+        self.assertEqual([item["admitted"] for item in version["results"]], [True, False])
 
         completed = self.run_command("check")
         payload = json.loads(completed.stdout)

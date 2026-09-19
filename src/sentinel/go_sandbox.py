@@ -37,7 +37,7 @@ class GoRunObservation:
 
 def _request_arguments(request):
     if type(request) is not GoRunRequest or type(request.command) is not str or request.command not in {
-        "preflight", "original", "help", "doctor", "crap", "mutation", "check", "history", "comparison"
+        "preflight", "original", "help", "version", "crap", "mutation", "check", "history", "comparison"
     }:
         raise sandbox._sandbox_failure()
     timeout = request.timeout_seconds
@@ -168,7 +168,7 @@ _BOOTSTRAP_LANE = r'''run_lane() {
     preflight) go mod verify && go list -mod=readonly -deps -test ./... ;;
     original) make ;;
     help) "$artifact/bin/sentinel-go" --help ;;
-    doctor|crap|history) "$artifact/bin/sentinel-go" "$command" --project "$project" --format json ;;
+    version|crap|history) "$artifact/bin/sentinel-go" "$command" --project "$project" --format json ;;
     mutation|check)
       mutant_flags=()
       if test "$mutant_timeout_ms" -gt 0; then

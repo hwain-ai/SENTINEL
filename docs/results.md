@@ -105,7 +105,7 @@ sentinel check --file src/pricing.py --function calculate_discount --tests tests
 | `status: "backendNotAdmitted"` | 도구가 승인 목록에 없어 기본 검사를 실행하지 않았다. |
 | `status: "cancelled"` | 검사가 취소되었다. |
 
-`plan`과 `doctor`의 종료 0은 각각 범위 확인·설치 확인의 성공이다. `admitted`는 사용한 도구의 승인 여부다. `--experimental`은 모든 품질 결과가 `passed`여도 종료 6을 반환한다.
+`plan`과 `version`의 종료 0은 각각 범위 확인·설치 확인의 성공이다. `admitted`는 사용한 도구의 승인 여부다. `--experimental`은 모든 품질 결과가 `passed`여도 종료 6을 반환한다.
 
 ## 출력 예시
 
@@ -152,4 +152,4 @@ JSON 안의 `exitCode`까지 포함한 JSON 전체가 표준 출력(stdout)이�
 
 ## 출력 형식 변경
 
-통합 CLI·플러그인 0.2.0은 `sentinel-workspace-result-v2`(plan·doctor·check)와 `sentinel-setup-result-v2`(setup)를 사용한다. v1의 최상위 `pass`와 `certified`를 제거했고 대체 성공 불리언은 추가하지 않았다. 기존 호출자는 `exitCode`·`selection`·`results`로 읽도록 수정한다. 내부 CRAP·mutation의 `pass`와 언어 어댑터 프로토콜은 유지한다.
+통합 CLI는 `sentinel-workspace-result-v2`(plan·version·check)와 `sentinel-setup-result-v2`(setup)를 사용한다. v1의 최상위 `pass`와 `certified`를 제거했고 대체 성공 불리언은 추가하지 않았다. 기존 호출자는 `exitCode`·`selection`·`results`로 읽도록 수정한다. 내부 CRAP·mutation의 `pass`와 언어 어댑터 프로토콜은 유지한다.

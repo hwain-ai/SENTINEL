@@ -1,6 +1,6 @@
 {
   "name": "sentinel",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "기본 호출로 CRAP·mutation 기준 통과까지 수정하며 check로 점수만 확인합니다. start·version·update와 제작자용 upgrade-tools를 제공합니다.",
   "author": {
     "name": "hwain-ai"

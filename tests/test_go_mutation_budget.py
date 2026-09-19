@@ -25,7 +25,7 @@ class MutationBudgetWiringTests(unittest.TestCase):
                                      (str(value), command, 'value.go'))
 
     def test_omission_preserves_all_existing_lanes(self):
-        for command in ('preflight', 'original', 'help', 'doctor', 'crap',
+        for command in ('preflight', 'original', 'help', 'version', 'crap',
                         'mutation', 'check', 'history', 'comparison'):
             request = self.request(command)
             with self.subTest(command=command):
@@ -41,7 +41,7 @@ class MutationBudgetWiringTests(unittest.TestCase):
                          ('840000', 'comparison', 'value.go'))
 
     def test_other_lanes_still_reject_explicit_budget(self):
-        for command in ('preflight', 'original', 'help', 'doctor', 'crap', 'history'):
+        for command in ('preflight', 'original', 'help', 'version', 'crap', 'history'):
             with self.subTest(command=command), self.assertRaises(SentinelError):
                 go_sandbox._request_arguments(self.request(command, 30000))
 

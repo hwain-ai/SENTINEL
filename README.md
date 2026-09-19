@@ -1,8 +1,8 @@
 # SENTINEL
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Runner](https://img.shields.io/badge/runner-0.3.0-green)](pyproject.toml)
-[![Plugin](https://img.shields.io/badge/plugin-0.4.0-green)](plugins/sentinel/.codex-plugin/plugin.json)
+[![Runner](https://img.shields.io/badge/runner-0.4.0-green)](pyproject.toml)
+[![Plugin](https://img.shields.io/badge/plugin-0.4.1-green)](plugins/sentinel/.codex-plugin/plugin.json)
 [![Python](https://img.shields.io/badge/python-3.9%2B-yellow)](pyproject.toml)
 
 **코딩 에이전트가 파일·함수와 테스트를 골라 검사하고, 점수와 실패 위치를 JSON으로 받는 도구입니다.** Python·TypeScript·Java를 지원합니다.
@@ -88,7 +88,7 @@ codex plugin add sentinel@sentinel
 
 ### 2. 첫 사용 준비
 
-새 대화에서 사용하는 호스트의 명령을 입력합니다. 이 문서의 스킬 구성은 플러그인 **0.4.0** 기준입니다.
+새 대화에서 사용하는 호스트의 명령을 입력합니다. 이 문서의 스킬 구성은 플러그인 **0.4.1** 기준입니다.
 
 | Claude Code | Codex |
 |---|---|
@@ -96,7 +96,7 @@ codex plugin add sentinel@sentinel
 
 `start`는 설치·초기 설정 요청입니다. 에이전트가 현재 프로젝트와 언어, 기존 설치를 확인하고 **모르는 정보만 묻습니다.** 같은 설치 동의를 다시 요청하지 않습니다.
 
-에이전트는 실행기 설치 → 필요한 언어의 `setup` → 소스·테스트 설정 확인 → `plan` → `doctor` 순서로 준비합니다. 새 설정의 기본 기준은 CRAP 8 이하·mutation 90% 이상이며 기존 설치와 기준은 유지합니다.
+에이전트는 실행기 설치 → 필요한 언어의 `setup` → 소스·테스트 설정 확인 → `plan` → `version` 순서로 준비합니다. 새 설정의 기본 기준은 CRAP 8 이하·mutation 90% 이상이며 기존 설치와 기준은 유지합니다.
 
 준비를 마치면 실행 경로·언어·적용 기준을 보고합니다. `start`만으로 CRAP·mutation 검사나 코드 수정을 시작하지 않습니다. 실제 검사는 아래 3단계에서 요청합니다.
 
@@ -146,7 +146,7 @@ Claude Code에서 입력하는 예시입니다. Codex에서는 앞의 `/`를 `$`
 
 새 설정의 기본값은 CRAP 8 이하·mutation 90% 이상이며 기존 프로젝트 기준이 있으면 그 값을 유지합니다. `fix`에 다른 목표 수치를 명시할 수도 있습니다. 에이전트는 기준을 낮추거나 검사 대상을 제외해서 통과시키지 않습니다. 중간에 좁은 범위로 확인하더라도 마지막에는 요청한 원래 범위로 다시 검사합니다.
 
-`version`은 사용자용 스킬 이름입니다. 내부에서는 실행기의 `--version`과 기존 설치 진단 명령 `doctor`를 사용합니다. 설치·업데이트·품질 검사를 자동으로 실행하지 않습니다. `update`는 프로젝트 코드·테스트·품질 기준을 유지하며, 원본 도구의 새 버전을 검증하는 제작자 작업은 `upgrade-tools`로 구분합니다.
+`version` 스킬은 실행기 버전 번호(`sentinel --version`)와 프로젝트의 도구 설치 상태(`sentinel version`)를 확인합니다. 실행기 0.4.0 이상을 사용합니다. 설치·업데이트·품질 검사를 자동으로 실행하지 않습니다. `update`는 프로젝트 코드·테스트·품질 기준을 유지하며, 원본 도구의 새 버전을 검증하는 제작자 작업은 `upgrade-tools`로 구분합니다.
 
 ## 에이전트가 실행하는 명령
 
@@ -156,7 +156,7 @@ Claude Code에서 입력하는 예시입니다. Codex에서는 앞의 `/`를 `$`
 |---|---|---|
 | Python 프로젝트 최초 설정 | `sentinel setup --language python` | 언어 도구 설치와 설정 파일 생성 |
 | 검사 대상 확인 | `sentinel plan` | 설정된 프로젝트 폴더와 언어 목록 |
-| 설치 상태 확인 | `sentinel doctor` | 도구 설치·승인 상태. 테스트는 실행하지 않음 |
+| 설치 상태 확인 | `sentinel version` | 도구 설치·승인 상태. 테스트는 실행하지 않음 |
 | 특정 함수 검사 | 아래 명령 참고 | 선택한 함수의 점수와 변이 기록 |
 | 특정 파일 전체 검사 | `sentinel check --file src/pricing.py --tests tests/test_pricing.py` | 해당 파일 안의 함수들 검사 |
 | Git 변경분 검사 | `sentinel check --changed` | 기본 `HEAD` 기준 변경된 기능 코드 검사 |
@@ -187,7 +187,7 @@ sentinel check --file src/pricing.py --function calculate_discount --tests tests
 | Maven Java | `sentinel setup --language java --java-dependencies` |
 | Python 테스트의 외부 패키지 | `setup`에 `--python-requirements requirements.txt` 추가. 해당 Python 모듈 기준 경로 |
 | Python `api/`와 TypeScript `web/` | `sentinel setup --language python --module-root python=api --language typescript --module-root typescript=web` |
-| 별도 도구 보관 폴더 | `--tools <절대 경로>`를 setup·plan·doctor·check에서 동일하게 사용 |
+| 별도 도구 보관 폴더 | `--tools <절대 경로>`를 setup·plan·version·check에서 동일하게 사용 |
 
 모듈은 따로 검사할 프로젝트 폴더입니다. 여러 모듈의 폴더는 같거나 서로 포함 관계일 수 없습니다. `setup`에서 언어를 생략하면 Python·TypeScript·Java를 모두 선택하므로 필요한 언어를 명시합니다. `--tools` 기본값은 프로젝트의 `.sentinel-tools/`입니다.
 
@@ -219,7 +219,7 @@ sentinel check --file src/pricing.py --function calculate_discount --tests tests
 | 키 | 예시 값의 뜻 | 에이전트가 사용하는 곳 |
 |---|---|---|
 | `schemaVersion` | JSON 구조의 버전 | 읽을 수 있는 결과 형식인지 확인 |
-| `command` | `check`: 실제 검사 명령 | `plan`·`doctor` 결과와 구분 |
+| `command` | `check`: 실제 검사 명령 | `plan`·`version` 결과와 구분 |
 | 최상위 `exitCode` | `2`: 하나 이상의 검사 결과가 품질 기준 미달 | 명령 전체 종료 결과 확인 |
 | `selection` | `partial`: 선택·변경분 검사. `allConfigured`: 설정된 전체 범위 | 부분 통과를 전체 통과로 보고하지 않도록 확인 |
 | `moduleCount` | 결과에 포함된 모듈 1개. 모듈은 따로 검사하는 프로젝트 폴더 | 여러 언어·프로젝트 폴더의 결과 개수 확인 |
@@ -403,15 +403,10 @@ SENTINEL은 현재 로컬 설치형 도구입니다. 원격 서버의 검사 기
 | 담당 | 해야 할 일 |
 |---|---|
 | 제작자 | 도구 버전을 검증하고 승인 목록·실행기·플러그인을 배포 |
-| 사용자 또는 사용자의 에이전트 | 배포된 새 버전을 로컬 설치에 적용하고 `doctor`로 확인 |
+| 사용자 또는 사용자의 에이전트 | 배포된 새 버전을 로컬 설치에 적용하고 `version`으로 확인 |
 
 사용자가 승인 목록을 직접 편집할 필요는 없습니다. 플러그인·실행기·언어 도구는 별도로 설치되므로 플러그인 갱신만으로 이미 설치된 검사기가 바뀌지는 않습니다. `setup`도 기존 언어 소스를 자동 갱신하지 않습니다. 공식 배포판을 적용하려면 `update`를 호출합니다. 갱신 뒤 품질 검사까지 원하면 `check`를, 기준 통과까지 수정을 원하면 기본 스킬이나 `fix`를 이어서 요청합니다.
 
-### 받은 플러그인을 수정해도 되나요?
-
-[MIT 라이선스](LICENSE)는 사용·복사·수정·재배포를 허용합니다. 사용자는 자신의 플러그인 지침이나 실행기 소스를 수정할 수 있으며, 코드의 복사본 또는 상당 부분을 배포할 때 저작권·라이선스 고지를 유지해야 합니다. 사용자 컴퓨터의 복사본을 바꿔도 제작자의 원본 저장소가 자동으로 바뀌지는 않습니다.
-
-개조한 언어 도구는 기존 승인 지문과 달라질 수 있습니다. SENTINEL은 기본 검사에서 도구 지문을 확인하지만, 사용자 소유 컴퓨터의 코드 개조 자체를 막는 장치는 아닙니다.
 
 ## 관련 문서
 

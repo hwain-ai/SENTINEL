@@ -194,7 +194,7 @@ class CliBootstrapTests(unittest.TestCase):
     def test_version_is_available(self):
         completed = cli("--version")
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("0.3.0", completed.stdout)
+        self.assertIn("0.4.0", completed.stdout)
 
     def test_help_does_not_resolve_the_current_project(self):
         environment = os.environ.copy()
@@ -436,23 +436,24 @@ class CheckTests(unittest.TestCase):
         self.assertNotIn("certified", payload)
         self.assertFalse((self.base / "python-count").exists())
 
-    def test_doctor_verifies_bundle_without_quality_execution(self):
+    def test_version_verifies_bundle_without_quality_execution(self):
         digest = self.install("python")
         workspace(self.project, [module("one", "python", "one", digest=digest)])
-        completed = cli("doctor", "--project", str(self.project), "--tools", str(self.tools))
+        completed = cli("version", "--project", str(self.project), "--tools", str(self.tools))
         payload = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(payload["command"], "version")
         self.assertEqual(payload["results"][0]["status"], "ready")
         self.assertEqual(payload["exitCode"], 0)
         self.assertNotIn("certified", payload)
         self.assertFalse((self.base / "python-count").exists())
 
-    def test_doctor_rejects_installed_file_with_relaxed_mode(self):
+    def test_version_rejects_installed_file_with_relaxed_mode(self):
         digest = self.install("python")
         workspace(self.project, [module("one", "python", "one", digest=digest)])
         entrypoint = self.tools / "python" / "1.2.3" / digest / "bin" / "sentinel-tool"
         entrypoint.chmod(0o755)
-        completed = cli("doctor", "--project", str(self.project), "--tools", str(self.tools), "--format", "json")
+        completed = cli("version", "--project", str(self.project), "--tools", str(self.tools), "--format", "json")
         self.assertEqual(completed.returncode, 5)
         self.assertEqual(json.loads(completed.stdout)["results"][0]["status"], "dependencyError")
 

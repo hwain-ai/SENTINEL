@@ -9,7 +9,7 @@
 |명령|실제 동작|외부 도구 실행|
 |---|---|---|
 |plan|설정 파일에서 전체 또는 선택한 모듈 목록을 확인한다.|없음|
-|doctor|선택한 설치 파일의 버전·내용 지문을 확인한다. 언어 SDK 자체의 실행 가능성을 확인하는 명령은 아니다.|없음|
+|version|선택한 설치 파일의 버전·내용 지문을 확인한다. 언어 SDK 자체의 실행 가능성을 확인하는 명령은 아니다.|없음|
 |install|신뢰하는 로컬 도구 묶음을 언어·버전·지문별 독립 폴더에 복사한다.|없음|
 |check|설치와 승인을 먼저 확인한다. 승인된 묶음의 모듈만 실행하고, 승인되지 않은 모듈은 backendNotAdmitted(6)로 두고 시작하지 않는다.|있음. 승인된 묶음만|
 |check --experimental|승인 여부와 상관없이 선택한 도구들을 호출한다. 모두 통과해도 종료 6이다.|있음|
@@ -19,7 +19,7 @@
 
 SDK는 해당 언어의 프로그램을 빌드하고 실행하는 도구 모음입니다. SENTINEL 명령의 설치와 언어 도구·SDK의 준비는 별개입니다.
 
-`plan`·`doctor`·`check`·`setup`은 기본적으로 JSON을 출력합니다. `--format json`은 생략할 수 있고, 텍스트 요약이 필요하면 `--format text`를 지정합니다.
+`plan`·`version`·`check`·`setup`은 기본적으로 JSON을 출력합니다. `--format json`은 생략할 수 있고, 텍스트 요약이 필요하면 `--format text`를 지정합니다.
 
 ## 검사 범위 설정
 
@@ -46,8 +46,8 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 .venv/bin/sentinel plan --project . --format json
 # --language python = 등록된 모듈 중 Python만 선택
 .venv/bin/sentinel plan --project . --language python --format json
-# doctor = 설치 지문 확인. 검사기와 프로젝트 테스트는 실행하지 않음
-.venv/bin/sentinel doctor --project . --format json
+# version = 설치 지문 확인. 검사기와 프로젝트 테스트는 실행하지 않음
+.venv/bin/sentinel version --project . --format json
 # check = 검사 요청(승인된 묶음만 실행). 기본 자동 실행 시간 제한은 없다.
 .venv/bin/sentinel check --project . --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py --format json
 # --experimental = 승인되지 않은 묶음도 실행(통과해도 종료 6)
@@ -68,7 +68,7 @@ SHA-256은 파일 내용에서 계산하는 지문입니다. 버전이 같아도
 
 Java의 함수 선택은 변이 도구의 행 범위를 사용합니다. 선택한 함수와 다른 메서드가 같은 행에 겹치면 선택을 거부하므로 파일 전체를 검사하거나 메서드를 서로 다른 행에 작성합니다.
 
-파일·함수·테스트 선택에는 통합 실행기 `0.3.0`과 Python·TypeScript 어댑터 `0.1.3`, Java 어댑터 `0.1.4`를 사용합니다. 도구의 승인 여부는 [admission.json](../../src/sentinel/admission.json)에 기록된 버전·지문·CI 근거로 확인합니다. 구버전 도구가 선택 요청을 처리하지 못하면 결과를 거부합니다. [실행기와 언어 도구 갱신](../../README.md#승인된-도구-버전-갱신) 후 다시 검사합니다.
+현재 통합 실행기는 `0.4.0`, Python·TypeScript 어댑터는 `0.1.4`, Java 어댑터는 `0.1.5`입니다. 설치 상태 확인 명령은 `version`으로 통일했습니다. 도구의 승인 여부는 [admission.json](../../src/sentinel/admission.json)에 기록된 버전·지문·CI 근거로 확인합니다. 구버전 도구가 선택 요청을 처리하지 못하면 결과를 거부합니다. [실행기와 언어 도구 갱신](../../README.md#승인된-도구-버전-갱신) 후 다시 검사합니다.
 
 ## 언어 도구 묶음의 제작·설치 계약
 
@@ -99,9 +99,9 @@ entrypoint도 files에 포함하며 manifest 자체는 제외합니다. 미기�
 
 공통 결과의 selection이 allConfigured이면 등록 모듈 전체, partial이면 일부만 대상으로 했습니다. moduleCount는 그 개수입니다. results에는 모듈 식별자, 언어, 관측 상태, 관측 종료 코드, 승인 여부(admitted), 선택적 진단 코드(diagnostic)와 측정 결과(details)를 담습니다. details.scope는 실제 대상과 테스트 범위이며, crap·mutation에는 함수별·파일별 점수와 실패 위치가 있습니다. 상대 경로와 도구가 확인한 변이 내용은 포함하지만 관계없는 원본 로그를 싣지 않습니다.
 
-plan·doctor의 종료 0은 각각 범위 확인·설치 확인의 성공입니다. check에서 `selection: allConfigured`와 모든 결과의 `status: passed`를 함께 확인해야 전체 설정 범위의 통과입니다. 파일·함수·테스트·변경분 또는 일부 모듈·언어 선택은 `selection: partial`입니다. `noChanges`는 종료 0이어도 미검사입니다. `admitted`는 도구 승인 여부이며 미승인 모듈은 기본 검사에서 실행하지 않고 `backendNotAdmitted`(6)를 반환합니다. `--experimental`은 모두 `passed`여도 종료 6입니다.
+plan·version의 종료 0은 각각 범위 확인·설치 확인의 성공입니다. check에서 `selection: allConfigured`와 모든 결과의 `status: passed`를 함께 확인해야 전체 설정 범위의 통과입니다. 파일·함수·테스트·변경분 또는 일부 모듈·언어 선택은 `selection: partial`입니다. `noChanges`는 종료 0이어도 미검사입니다. `admitted`는 도구 승인 여부이며 미승인 모듈은 기본 검사에서 실행하지 않고 `backendNotAdmitted`(6)를 반환합니다. `--experimental`은 모두 `passed`여도 종료 6입니다.
 
-plan·doctor·check의 JSON은 `sentinel-workspace-result-v2`, setup은 `sentinel-setup-result-v2`입니다. v1의 최상위 `pass`와 `certified`는 삭제했습니다. 명령 성공은 `exitCode == 0`으로 확인하고, 검사 범위와 품질 판정은 `selection`과 `results[].status`로 읽습니다. `results[].details` 안의 CRAP·mutation `pass`와 언어 어댑터 프로토콜은 그대로 유지합니다.
+plan·version·check의 JSON은 `sentinel-workspace-result-v2`, setup은 `sentinel-setup-result-v2`입니다. v1의 최상위 `pass`와 `certified`는 삭제했습니다. 명령 성공은 `exitCode == 0`으로 확인하고, 검사 범위와 품질 판정은 `selection`과 `results[].status`로 읽습니다. `results[].details` 안의 CRAP·mutation `pass`와 언어 어댑터 프로토콜은 그대로 유지합니다.
 
 ## 승인 목록(admission.json)
 
@@ -117,7 +117,7 @@ python3 scripts/admission.py verify
 python3 scripts/admission.py lint
 ```
 
-`--admission <파일>`을 doctor·check 에 주면 패키지의 목록 대신 그 파일을 씁니다. 조직이 자체 승인 목록을 운영할 때 씁니다.
+`--admission <파일>`을 version·check 에 주면 패키지의 목록 대신 그 파일을 씁니다. 조직이 자체 승인 목록을 운영할 때 씁니다.
 
 실행기·언어 도구의 갱신은 [README의 갱신 절차](../../README.md#승인된-도구-버전-갱신)를 따릅니다.
 
