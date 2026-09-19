@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 import hashlib
 import json
 import stat
@@ -12,6 +13,17 @@ from pathlib import Path
 
 REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
 SRC_ROOT = os.path.join(REPO_ROOT, "src")
+
+
+@lru_cache(maxsize=1)
+def isolated_environment_keys():
+    # Python may add platform-specific startup variables to the three supplied keys.
+    completed = subprocess.run(
+        [sys.executable, "-I", "-B", "-c", "import json,os; print(json.dumps(sorted(os.environ)))"],
+        env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"},
+        capture_output=True, text=True, check=True,
+    )
+    return set(json.loads(completed.stdout))
 
 
 def cli(*arguments, cwd=None):
@@ -63,11 +75,11 @@ def make_bundle(parent, language="python", version="1.2.3", behavior="pass"):
             response.update(toolVersion='1.2.3', status='noChanges', exitCode=0, passed=False)
             print(json.dumps(response))
         """,
-        "pass": """
+        "pass": f"""
             import json, os, sys
             request = json.load(sys.stdin)
-            response = {key: request[key] for key in ('protocolVersion', 'requestId', 'command', 'moduleId', 'language')}
-            if os.getcwd() == request['projectRoot'] and set(os.environ) == {'PATH', 'LANG', 'LC_ALL'}:
+            response = {{key: request[key] for key in ('protocolVersion', 'requestId', 'command', 'moduleId', 'language')}}
+            if os.getcwd() == request['projectRoot'] and set(os.environ) == {isolated_environment_keys()!r}:
                 response.update(toolVersion='1.2.3', status='passed', exitCode=0, passed=True)
             else:
                 response.update(toolVersion='1.2.3', status='backendError', exitCode=6, passed=False)

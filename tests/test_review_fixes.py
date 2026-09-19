@@ -268,7 +268,9 @@ class InstallReviewTests(unittest.TestCase):
         current = source
         entrypoint = None
         try:
-            for _ in range(1050):
+            # macOS PATH_MAX cannot represent 1050 levels; still exceed the bundle limit.
+            depth = 1050 if sys.platform == "linux" else bundle_module.MAX_PATH_DEPTH + 1
+            for _ in range(depth):
                 current = current / "d"
                 current.mkdir()
                 directories.append(current)
