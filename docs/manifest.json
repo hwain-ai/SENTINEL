@@ -3,7 +3,7 @@
   "documents": [
     {
       "path": "README.md",
-      "summary": "사용자·에이전트 역할, 첫 사용 준비, 명령·JSON 해석과 업데이트 책임"
+      "summary": "수정 기본 모드, 목적별 스킬, JSON 해석과 실험 PDF"
     },
     {
       "path": "docs/results.md",
@@ -23,7 +23,7 @@
     },
     {
       "path": "plugins/sentinel/skills/sentinel/SKILL.md",
-      "summary": "첫 사용 확인, 파일·함수·테스트 선택과 통과까지 수정·재검사 지침"
+      "summary": "수정 기본 모드와 check·start·version·update 스킬 선택"
     },
     {
       "path": "plugins/sentinel/skills/start/SKILL.md",
@@ -36,6 +36,42 @@
     {
       "path": "docs/contributing.md",
       "summary": "문서 색인·소스 연결표 관리, diff 검사와 push 훅 사용"
+    },
+    {
+      "path": "plugins/sentinel/skills/check/SKILL.md",
+      "summary": "check의 점수 측정·결과 보고 전용 동작"
+    },
+    {
+      "path": "plugins/sentinel/skills/fix/SKILL.md",
+      "summary": "기본 호출과 같은 기준 통과까지 수정·재검사"
+    },
+    {
+      "path": "plugins/sentinel/skills/version/SKILL.md",
+      "summary": "플러그인·실행기·언어 도구 버전과 설치 상태 확인"
+    },
+    {
+      "path": "plugins/sentinel/skills/update/SKILL.md",
+      "summary": "현재 설치한 SENTINEL 구성요소의 공식 배포판 갱신"
+    },
+    {
+      "path": "plugins/sentinel/skills/upgrade-tools/SKILL.md",
+      "summary": "제작 저장소의 원본 도구 버전·잠금·어댑터·승인 갱신"
+    },
+    {
+      "path": "plugins/sentinel/skills/sentinel/references/measurement.md",
+      "summary": "공통 검사 범위 선택과 JSON 점수·위치 해석"
+    },
+    {
+      "path": "plugins/sentinel/skills/sentinel/references/repair.md",
+      "summary": "기준과 원래 범위를 유지하는 반복 수정 절차"
+    },
+    {
+      "path": "plugins/sentinel/skills/sentinel/references/update.md",
+      "summary": "호스트 플러그인·실행기·승인된 언어 도구 갱신 순서"
+    },
+    {
+      "path": "docs/evidence/quality-goals-study.md",
+      "summary": "54회 실험의 그룹별 목표·관측값과 원문 PDF 안내"
     }
   ],
   "rules": [
@@ -155,6 +191,34 @@
       ],
       "documents": [
         "plugins/sentinel/skills/start/SKILL.md"
+      ]
+    },
+    {
+      "id": "skill-usage",
+      "sources": [
+        "plugins/sentinel/skills/*/SKILL.md",
+        "plugins/sentinel/skills/sentinel/references/*.md"
+      ],
+      "documents": [
+        "README.md"
+      ]
+    },
+    {
+      "id": "experiment-record",
+      "sources": [
+        "docs/evidence/*.pdf"
+      ],
+      "documents": [
+        "docs/evidence/quality-goals-study.md"
+      ]
+    },
+    {
+      "id": "experiment-readme",
+      "sources": [
+        "docs/evidence/*.pdf"
+      ],
+      "documents": [
+        "README.md"
       ]
     }
   ],

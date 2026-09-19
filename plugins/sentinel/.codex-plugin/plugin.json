@@ -1,23 +1,24 @@
 {
   "name": "sentinel",
-  "version": "0.3.1",
-  "description": "SENTINEL의 첫 사용 준비와 Python·TypeScript·Java 검사, 기준을 통과할 때까지 수정·재검사를 에이전트에게 요청합니다.",
+  "version": "0.4.0",
+  "description": "기본 호출로 CRAP·mutation 기준 통과까지 수정하며 check로 점수만 확인합니다. start·version·update와 제작자용 upgrade-tools를 제공합니다.",
   "author": {
     "name": "hwain-ai"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "SENTINEL",
-    "shortDescription": "첫 사용 준비부터 품질 기준 통과까지",
-    "longDescription": "Linux·macOS·Windows WSL에서 필요한 SENTINEL 설치를 안내하고 파일·함수·테스트를 검사합니다. 통과할 때까지 요청하면 기존 CRAP·mutation 기준을 유지하며 코드·테스트 수정과 재검사를 이어갑니다.",
+    "shortDescription": "기준 통과까지 수정, check는 점수만 확인",
+    "longDescription": "Linux·macOS·Windows WSL에서 설치·버전 확인·공식 배포판 갱신과 CRAP·mutation 검사를 요청합니다. 기본 호출과 fix는 기준 통과까지 수정하고 check는 측정 결과만 보고합니다.",
     "developerName": "hwain-ai",
     "category": "Developer Tools",
     "capabilities": [
       "로컬 SENTINEL 명령 호출"
     ],
     "defaultPrompt": [
-      "SENTINEL start 스킬로 현재 프로젝트의 설치와 기본 설정을 준비해 줘.",
-      "SENTINEL로 이 프로젝트를 검사하고 CRAP·mutation 기준에 통과할 때까지 수정해 줘."
+      "SENTINEL로 이 프로젝트가 CRAP·mutation 기준을 통과할 때까지 수정해 줘.",
+      "SENTINEL check 스킬로 코드 수정 없이 현재 점수만 확인해 줘.",
+      "SENTINEL start 스킬로 이 프로젝트의 설치와 기본 설정을 준비해 줘."
     ]
   }
 }
