@@ -1,5 +1,7 @@
 # SENTINEL
 
+한국어 | [English](README.en.md)
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Runner](https://img.shields.io/badge/runner-0.4.0-green)](pyproject.toml)
 [![Plugin](https://img.shields.io/badge/plugin-0.5.0-green)](plugins/sentinel/.codex-plugin/plugin.json)

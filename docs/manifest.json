@@ -6,6 +6,10 @@
       "summary": "수정 기본 모드, 목적별 스킬, JSON 해석과 실험 PDF"
     },
     {
+      "path": "README.en.md",
+      "summary": "영문 설치·스킬 사용 가이드, 실행 명령과 JSON 결과 해석"
+    },
+    {
       "path": "docs/results.md",
       "summary": "검사 범위, 명령 성공과 품질 합격의 구분, 점수·위치와 JSON 조각별 해설"
     },
@@ -211,6 +215,15 @@
       ],
       "documents": [
         "README.md"
+      ]
+    },
+    {
+      "id": "readme-english",
+      "sources": [
+        "README.md"
+      ],
+      "documents": [
+        "README.en.md"
       ]
     }
   ],
