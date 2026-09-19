@@ -64,7 +64,7 @@ def run_template(template, project, *extra):
 
 
 class HostPluginStructureTests(unittest.TestCase):
-    def test_two_host_manifests_share_one_skill(self):
+    def test_two_host_manifests_share_start_and_sentinel_skills(self):
         manifests = (
             PLUGIN_ROOT / ".codex-plugin" / "plugin.json",
             PLUGIN_ROOT / ".claude-plugin" / "plugin.json",
@@ -74,9 +74,10 @@ class HostPluginStructureTests(unittest.TestCase):
                 self.assertTrue(manifest_path.is_file(), f"{manifest_path.parent.name} plugin package is missing")
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 self.assertEqual(manifest["name"], "sentinel")
-                self.assertEqual(manifest["version"], "0.3.0")
+                self.assertEqual(manifest["version"], "0.3.1")
                 self.assertEqual(manifest["skills"], "./skills/")
         self.assertTrue(SKILL_PATH.is_file(), "Shared SENTINEL skill is missing")
+        self.assertTrue((PLUGIN_ROOT / "skills" / "start" / "SKILL.md").is_file(), "Start skill is missing")
 
     def test_user_facing_descriptions_and_starter_prompts_are_korean(self):
         for host in (".codex-plugin", ".claude-plugin"):

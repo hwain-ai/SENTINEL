@@ -1,7 +1,8 @@
 # SENTINEL
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.3.0-green)](pyproject.toml)
+[![Runner](https://img.shields.io/badge/runner-0.3.0-green)](pyproject.toml)
+[![Plugin](https://img.shields.io/badge/plugin-0.3.1-green)](plugins/sentinel/.codex-plugin/plugin.json)
 [![Python](https://img.shields.io/badge/python-3.9%2B-yellow)](pyproject.toml)
 
 **코딩 에이전트가 파일·함수와 테스트를 골라 검사하고, 점수와 실패 위치를 JSON으로 받는 도구입니다.** Python·TypeScript·Java를 지원합니다.
@@ -83,17 +84,17 @@ codex plugin add sentinel@sentinel
 
 ### 2. 첫 사용 준비
 
-새 대화에서 SENTINEL 스킬을 선택하고 원하는 검사를 요청하세요. 호스트가 표시하는 전체 이름은 Claude Code의 `/sentinel:sentinel`, Codex의 `$sentinel:sentinel`입니다. 자동완성 목록에 짧은 이름이 보이면 그 항목을 선택해도 됩니다.
+새 대화에서 사용하는 호스트의 명령을 입력합니다. 전용 `start` 스킬은 플러그인 **0.3.1**부터 제공됩니다.
 
-```text
-SENTINEL로 현재 프로젝트를 검사해 줘.
-```
+| Claude Code | Codex |
+|---|---|
+| `/sentinel:start` | `$sentinel:start` |
 
-실행기가 없거나 첫 프로젝트라면 **에이전트가 먼저 필요한 정보를 확인합니다.** 현재 폴더에서 프로젝트와 언어를 찾고, 모르는 항목과 설치 동의만 묻습니다.
+`start`는 설치·초기 설정 요청입니다. 에이전트가 현재 프로젝트와 언어, 기존 설치를 확인하고 **모르는 정보만 묻습니다.** 같은 설치 동의를 다시 요청하지 않습니다.
 
-> 현재 프로젝트는 Python입니다. SENTINEL 실행기와 Python 검사 도구를 이 환경에 설치하고 검사를 이어갈까요?
+에이전트는 실행기 설치 → 필요한 언어의 `setup` → 소스·테스트 설정 확인 → `plan` → `doctor` 순서로 준비합니다. 새 설정의 기본 기준은 CRAP 8 이하·mutation 90% 이상이며 기존 설치와 기준은 유지합니다.
 
-동의하면 에이전트가 실행기 설치 → `setup` → 소스·테스트 설정 확인 → `plan` → `doctor` → 요청한 검사를 진행합니다. 긴 설치 프롬프트를 따로 작성할 필요는 없습니다. 기존 설치와 설정이 있으면 그대로 사용합니다. 플러그인 설치 버튼을 누르는 즉시 실행되는 기능은 아니며, SENTINEL을 처음 호출할 때 시작합니다.
+준비를 마치면 실행 경로·언어·적용 기준을 보고합니다. `start`만으로 CRAP·mutation 검사나 코드 수정을 시작하지 않습니다. 실제 검사는 아래 3단계에서 요청합니다.
 
 Windows에서는 WSL 배포판과 프로젝트 경로를 확인합니다. 예: `Ubuntu`, `/home/me/projects/shop`. 에이전트가 현재 대화에서 프로젝트를 알 수 없다면 실제 경로를 알려 주세요.
 

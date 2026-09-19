@@ -13,7 +13,7 @@ python3 -m venv "$HOME/.local/share/sentinel/SENTINEL/.venv"
 "$HOME/.local/share/sentinel/SENTINEL/.venv/bin/python" -m pip install "$HOME/.local/share/sentinel/SENTINEL"
 ```
 
-확인한 실행기·프로젝트 경로로 아래 `setup`을 수행한다. 설정의 기능 코드·테스트 범위를 실제 폴더와 대조하고 `plan`·`doctor`를 확인한 뒤 사용자가 처음 요청한 검사 또는 수정·재검사를 이어간다. 다음 호출에서는 기존 실행기와 프로젝트 설정을 사용한다. 플러그인 설치 직후의 훅이 아니라 이 스킬의 첫 실행에서 준비한다.
+확인한 실행기·프로젝트 경로로 아래 `setup`을 수행한다. 설정의 기능 코드·테스트 범위를 실제 폴더와 대조하고 `plan`·`doctor`를 확인한다. `start`만 요청했다면 준비 완료를 보고하고 끝낸다. 검사 또는 수정·재검사도 요청했다면 그 작업을 이어간다. 다음 호출에서는 기존 실행기와 프로젝트 설정을 사용한다. 플러그인 설치 직후의 훅이 아니라 스킬 호출에서 준비한다.
 
 ## 실행 파일과 프로젝트 경로를 분리한 기본 호출
 

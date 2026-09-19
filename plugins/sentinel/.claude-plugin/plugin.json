@@ -1,6 +1,6 @@
 {
   "name": "sentinel",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "SENTINEL의 첫 사용 준비와 Python·TypeScript·Java 검사, 기준을 통과할 때까지 수정·재검사를 에이전트에게 요청합니다.",
   "author": {
     "name": "hwain-ai"

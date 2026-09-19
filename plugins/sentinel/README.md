@@ -9,12 +9,14 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 | 순서 | 사용자가 할 일 |
 |---|---|
 | 1 | [사용할 환경과 플러그인 준비](../../README.md#1-사용할-환경과-플러그인-준비) |
-| 2 | [첫 호출에서 설치·프로젝트 준비](../../README.md#2-첫-사용-준비) |
+| 2 | [`/sentinel:start` 또는 `$sentinel:start`로 설치·초기 설정](../../README.md#2-첫-사용-준비) |
 | 3 | [원하는 검사 또는 수정·재검사 요청](../../README.md#3-에이전트에게-검사-요청) |
 
 플러그인 설치에는 저장소를 직접 복제할 필요가 없습니다. 호스트가 GitHub에서 설치 목록과 플러그인을 가져옵니다. 이 폴더만 설치해도 실행기·언어 SDK가 함께 설치되는 것은 아닙니다.
 
 이미 실행기와 프로젝트 설정이 있다면 새 대화에서 SENTINEL 스킬을 사용하고, **신뢰할 실행 파일·프로젝트의 절대 경로**를 알려 주세요. 별도 도구 폴더를 사용했다면 그 경로도 지정합니다. Windows에서는 WSL 배포판 이름과 Linux 경로를 전달합니다. 실제 요청문은 위 3단계에 있습니다.
+
+플러그인 `0.3.1`은 설치·초기 설정용 [start](skills/start/SKILL.md)와 검사·수정 요청용 [sentinel](skills/sentinel/SKILL.md) 스킬을 제공합니다. `start`는 `setup`·`plan`·`doctor`로 준비 상태를 확인하고 끝냅니다. 실제 품질 검사와 코드 수정은 별도로 요청합니다.
 
 ## 무엇을 실행하나요?
 
@@ -37,7 +39,8 @@ Claude Code·Codex에서 **SENTINEL로 프로젝트 검사를 요청할 수 있�
 
 - `.codex-plugin/plugin.json`: Codex용 설정
 - `.claude-plugin/plugin.json`: Claude Code용 설정
-- `skills/sentinel/SKILL.md`: 두 호스트가 함께 사용하는 검사 지침
+- `skills/start/SKILL.md`: 두 호스트가 함께 사용하는 설치·초기 설정 지침
+- `skills/sentinel/SKILL.md`: 두 호스트가 함께 사용하는 검사·수정 지침
 
 두 설정은 같은 `./skills/`를 사용합니다. 저장소 루트의 `.agents/plugins/marketplace.json`과 `.claude-plugin/marketplace.json`이 이 폴더를 가리킵니다. 로컬 소스를 마켓플레이스로 등록할 때는 이 폴더 자체가 아닌 **SENTINEL 저장소 루트**를 지정합니다.
 

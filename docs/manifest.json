@@ -26,6 +26,10 @@
       "summary": "첫 사용 확인, 파일·함수·테스트 선택과 통과까지 수정·재검사 지침"
     },
     {
+      "path": "plugins/sentinel/skills/start/SKILL.md",
+      "summary": "start 호출의 설치·초기 설정과 준비 완료 판정"
+    },
+    {
       "path": "plugins/sentinel/skills/sentinel/references/setup.md",
       "summary": "첫 호출 설치 안내, Linux·macOS 준비와 Windows WSL 호출"
     },
@@ -140,6 +144,17 @@
       ],
       "documents": [
         "docs/references/sentinel-quality-tools-reference.md"
+      ]
+    },
+    {
+      "id": "start-context",
+      "sources": [
+        "src/sentinel/setup.py",
+        "src/sentinel/gate.py",
+        "plugins/sentinel/skills/sentinel/references/setup.md"
+      ],
+      "documents": [
+        "plugins/sentinel/skills/start/SKILL.md"
       ]
     }
   ],
