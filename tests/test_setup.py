@@ -26,6 +26,7 @@ TOOL_SCRIPT = textwrap.dedent(
     Path(home, "last-request.json").write_text(json.dumps(request))
     response = {key: request[key] for key in ("protocolVersion", "requestId", "command", "moduleId", "language")}
     response.update(toolVersion=manifest["version"], status="qualityFailed", exitCode=2, passed=False)
+    response.update({"executionMode": request["executionMode"]} if "executionMode" in request else {})
     print(json.dumps(response))
     raise SystemExit(2)
     """

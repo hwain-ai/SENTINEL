@@ -22,8 +22,6 @@ MAX_PATH_BYTES = 4096
 MAX_PATH_COMPONENTS = 256
 MAX_JSON_DEPTH = 64
 RENAME_NOREPLACE = 1
-AT_EMPTY_PATH = 0x1000
-SYS_FCHMODAT2 = 452
 DIGEST = re.compile(r"^[0-9a-f]{64}$")
 KINDS = frozenset(("artifact", "dependencies", "corpus"))
 OPEN_DIRECTORY = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
@@ -306,24 +304,21 @@ def _same_directory_identity(metadata: os.stat_result, expected: _Snapshot) -> b
 
 
 def _fchmod_path_descriptor(descriptor: int, mode: int) -> None:
-    # RISK(platform): fchmodat2 is required for a directory created under umask
-    # 0777. The pinned Linux executor supports it; unsupported kernels fail closed.
-    if os.uname().sysname != "Linux" or os.uname().machine not in ("x86_64", "aarch64"):
-        raise _failure()
+    # O_PATH permits binding a mode-000 directory, but not fchmod on that FD.
+    # The kernel's proc entry still names that inode after its project path moves.
+    proc_descriptor = None
     try:
-        library = ctypes.CDLL(None, use_errno=True)
-        syscall = library.syscall
-        result = syscall(
-            ctypes.c_long(SYS_FCHMODAT2),
-            ctypes.c_int(descriptor),
-            ctypes.c_char_p(b""),
-            ctypes.c_uint(mode),
-            ctypes.c_int(AT_EMPTY_PATH),
-        )
-    except (AttributeError, OSError, TypeError, ValueError):
+        expected = _snapshot(os.fstat(descriptor))
+        proc_descriptor = os.open("/proc/self/fd", OPEN_DIRECTORY)
+        name = str(descriptor)
+        if _snapshot(os.stat(name, dir_fd=proc_descriptor)) != expected:
+            raise _failure()
+        os.chmod(name, mode, dir_fd=proc_descriptor)
+    except (OSError, ValueError):
         raise _failure()
-    if result != 0:
-        raise _failure()
+    finally:
+        if proc_descriptor is not None:
+            os.close(proc_descriptor)
 
 
 def _open_directory_entry(

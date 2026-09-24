@@ -99,6 +99,8 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--file", action="append", default=[], help="production file; repeat for multiple files")
     check.add_argument("--function", action="append", default=[], help="function name without (); requires one --file")
     check.add_argument("--tests", action="append", default=[], help="test file; repeat for multiple test files")
+    check.add_argument("--execution-mode", choices=("parallel", "sequential"), default="parallel",
+                       help="CRAP and mutation scheduling (default: parallel)")
     _gate_options(check)
     setup = commands.add_parser("setup")
     setup.add_argument("--project")
@@ -154,6 +156,8 @@ def _emit(payload: Dict[str, object], output_format: str) -> None:
             line += ", admitted" if result["admitted"] else ", not admitted"
         if result.get("diagnostic"):
             line += ": " + result["diagnostic"]
+        if result.get("executionMode"):
+            line += ", execution=" + result["executionMode"]
         lines.append(line)
         if result.get("details") is not None:
             lines.extend(text_details(result["details"]))
@@ -315,6 +319,7 @@ def _run_workspace(args: argparse.Namespace) -> int:
                     gate,
                     changes.get(module.module_id) if changed_mode else None,
                     selections.get(module.module_id),
+                    args.execution_mode,
                 )
             observations.append(observation)
             if observation.cancellation_requested:
@@ -334,6 +339,8 @@ def _run_workspace(args: argparse.Namespace) -> int:
             result["details"] = observation.details
         if observation.diagnostic is not None:
             result["diagnostic"] = observation.diagnostic
+        if observation.execution_mode is not None:
+            result["executionMode"] = observation.execution_mode
     exit_code = _aggregate_exit(observations)
     if args.experimental and exit_code == 0:
         # An experimental run may include unadmitted adapters, so a clean run is still not admitted.

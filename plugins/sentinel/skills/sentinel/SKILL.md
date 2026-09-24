@@ -5,6 +5,8 @@ description: 기본 SENTINEL 요청은 CRAP·mutation 기준을 통과할 때까
 
 # SENTINEL 기본 실행
 
+`check` 명령은 CRAP·mutation을 기본으로 병렬 실행한다. 사용자가 순차 실행을 요청하면 `--execution-mode sequential`을 전달한다. 지원하지 않는 구버전 도구를 조용히 순차 실행으로 대체하지 않는다.
+
 기본 호출은 **요청한 범위가 기존 CRAP·mutation 기준을 통과할 때까지 수정·재검사**하는 작업이다. [반복 수정 절차](references/repair.md)를 따른다. 파일·함수를 지정하지 않았다면 현재 프로젝트의 설정된 전체 범위를 대상으로 한다. 현재 프로젝트를 확인할 수 없을 때만 경로를 묻는다.
 
 사용자가 명시한 작업 제한이 기본 동작보다 우선한다.

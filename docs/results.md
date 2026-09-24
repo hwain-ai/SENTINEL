@@ -4,6 +4,8 @@ SENTINEL은 검사한 범위, CRAP 점수, 변이 탐지율과 측정 근거를 
 
 ## 검사 범위
 
+기본 실행은 병렬이다. `--execution-mode sequential`로 순차 실행을 선택할 수 있다. 실제 도구가 확인한 방식은 각 모듈 결과의 `executionMode`에 `parallel` 또는 `sequential`로 표시한다. 실행 방식은 검사 범위나 CRAP·mutation 합격 기준을 바꾸지 않는다.
+
 ```sh
 sentinel check --file src/pricing.py --function calculate_discount --tests tests/test_pricing.py
 ```

@@ -565,20 +565,29 @@ raise SystemExit(main({arguments!r}))
                 ready_read, ready_write = os.pipe()
                 script = f"""
 import os
-from sentinel.cli import main
+from sentinel import cli
 
 if {case!r} == 'stdout-fd-missing':
     os.close(1)
 os.set_blocking(2, False)
-try:
-    while True:
-        os.write(2, b'x' * 4096)
-except BlockingIOError:
-    pass
+for size in (4096, 1):
+    try:
+        while True:
+            os.write(2, b'x' * size)
+    except BlockingIOError:
+        pass
 os.set_blocking(2, True)
-os.write({ready_write}, b'READY\\n')
-os.close({ready_write})
-raise SystemExit(main(['--help']))
+diagnose = cli._diagnose
+ready_sent = False
+def notify_diagnostic(value):
+    global ready_sent
+    if not ready_sent:
+        ready_sent = True
+        os.write({ready_write}, b'READY\\n')
+        os.close({ready_write})
+    diagnose(value)
+cli._diagnose = notify_diagnostic
+raise SystemExit(cli.main(['--help']))
 """
                 process = None
                 try:
@@ -597,13 +606,10 @@ raise SystemExit(main(['--help']))
                         process.stdout.close()
                     self.assertTrue(select.select([ready_read], [], [], 3)[0])
                     self.assertEqual(os.read(ready_read, 4096), b"READY\n")
-                    deadline = time.monotonic() + 3
-                    while time.monotonic() < deadline:
-                        if Path(f"/proc/{process.pid}/wchan").read_text().strip() == "anon_pipe_write":
-                            break
-                        time.sleep(0.01)
-                    else:
-                        self.fail("child did not block in stderr diagnostic")
+                    # The diagnostic started with a full stderr pipe. It must stay
+                    # blocked until interrupted; kernel-internal wait names vary.
+                    with self.assertRaises(subprocess.TimeoutExpired):
+                        process.wait(timeout=0.1)
                     process.send_signal(signal.SIGINT)
                     try:
                         code = process.wait(timeout=2)

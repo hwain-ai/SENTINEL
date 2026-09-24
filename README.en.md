@@ -13,19 +13,106 @@ By default, the plugin asks the coding agent to **edit code and tests, then rech
 
 ![SENTINEL: Mutation Test and CRAP](docs/assets/the_sentinel.png)
 
-[Features](#features) · [Technology stack](#technology-stack) · [Getting started](#getting-started) · [Commands for agents](#commands-for-agents) · [Reading JSON results](#reading-json-results) · [Exit codes and status](#exit-codes-and-status) · [Comparison with individual tools](#tools-comparison)
+[Features](#features) · [How checks preserve the original source](#how-checks-preserve-the-original-source) · [Technology stack](#technology-stack) · [Getting started](#getting-started) · [Commands for agents](#commands-for-agents) · [Reading JSON results](#reading-json-results) · [Exit codes and status](#exit-codes-and-status) · [Comparison with individual tools](#tools-comparison)
 
 ## Features
 
 | Feature | What it tells you |
 |---|---|
-| CRAP analysis | Evaluates a function's complexity together with its test coverage. Lower is better; the default maximum is **8**. |
-| Mutation testing | Checks whether tests detect **mutants**, which are deliberate changes to operators or values in the code. The default minimum detection rate is **90%**. |
+| CRAP analysis | Evaluates a function's complexity and test coverage without changing the source code's logic. Lower is better; the default maximum is **8**. |
+| Mutation testing | Checks whether tests detect **mutants**, which are deliberate changes to operators or values in a temporary copy of the code. The default minimum detection rate is **90%**. |
+| Original source preservation | Both checks run tests in project copies created in separate temporary directories. Changes made for testing are not written back to the original source. |
 | Scope selection | Select source files, individual functions, and test files. You can also inspect Git changes or the entire configured scope. |
 | Locations and evidence | Returns scores by file and function, threshold verdicts, and the locations and statuses of mutants that tests did not detect. |
 | JSON output | Uses common fields across all three languages for scope, quality verdicts, and execution errors. |
 
 A quality pass means **the inspected scope meets the CRAP and mutation thresholds**. It does not mean every product requirement is satisfied or that the code has no bugs.
+
+## How checks preserve the original source
+
+SENTINEL **copies the project's source code, tests, and configuration files into the operating system's temporary directory, then runs tests on the copies.** CRAP analysis and mutation testing use those copies differently.
+
+**Checks run in parallel by default.** CRAP and mutation start in separate work directories for the same request, and their results are combined. Add `--execution-mode sequential` to run them one after the other. This option does not run multiple project modules in parallel.
+
+```sh
+# Default: run CRAP and mutation in parallel.
+sentinel check --file src/pricing.py --tests tests/test_pricing.py
+# Choose sequential execution for limited memory or tests that share a database or port.
+sentinel check --file src/pricing.py --tests tests/test_pricing.py --execution-mode sequential
+```
+
+- **CRAP leaves the source code's logic unchanged.** It reads the code to calculate complexity from constructs such as conditions and loops, then runs tests to measure **coverage**, the code actually executed by those tests. It combines the two measurements into a CRAP score.
+- **Mutation testing deliberately changes the copy's logic.** For example, it can replace multiplication with division and run the same tests again. It checks whether the tests miss the introduced fault, measuring their ability to detect faults.
+
+```mermaid
+flowchart TD
+    O["Your project<br/>Source code · tests · configuration"]
+
+    subgraph CRAP["CRAP analysis: source logic stays unchanged"]
+        C1["Create a copy for CRAP analysis<br/>in a temporary directory"]
+        C2["Read the code to calculate complexity<br/>Run tests to measure coverage"]
+        C3["Calculate the CRAP score<br/>from complexity and coverage"]
+        C1 --> C2 --> C3
+    end
+
+    subgraph MUTATION["Mutation testing: deliberately change the copy's logic"]
+        M1["Create a copy for mutation testing<br/>in a temporary directory"]
+        M2["Check that the existing tests pass<br/>Change operators, conditions, or other expressions in the copy"]
+        M3["Run the same tests again<br/>Check whether they detect the introduced faults"]
+        M4["Collect the mutation detection rate<br/>and locations of missed faults"]
+        M1 --> M2 --> M3 --> M4
+    end
+
+    O -->|"Start in parallel · copy files"| C1
+    O -->|"Start in parallel · copy files"| M1
+    C3 --> R["Collect and return scores, files, functions, and failure locations<br/>Clean up the temporary directories"]
+    M4 --> R
+    O -.-> K["Preserve the original source<br/>Do not write test changes back"]
+
+    style O fill:#eef2ff,stroke:#6366f1
+    style K fill:#ecfdf5,stroke:#16a34a
+    style CRAP fill:#eff6ff,stroke:#2563eb
+    style MUTATION fill:#faf5ff,stroke:#9333ea
+```
+
+CRAP also runs real tests, which can create measurement reports and build output. Using a copy keeps that work separate from the original project. The diagram shows both checks proceeding normally. If the existing tests fail or required measurements cannot be obtained, SENTINEL reports that problem.
+
+### Where the copies are created
+
+These are **example paths for checking a Python project on Linux with the default parallel mode**. Suffixes such as `abc123` are illustrative; actual temporary directory names are generated at runtime.
+
+```text
+Original project
+/home/me/shop/
+├── src/pricing.py
+└── tests/test_pricing.py
+
+CRAP copy: measure without changing source logic
+/tmp/sentinel-parallel-abc123/0/sentinel-py-coverage-def456/project/
+├── src/pricing.py
+└── tests/test_pricing.py
+
+Mutation copy: create and test mutants within this workspace
+/tmp/sentinel-parallel-abc123/1/sentinel-py-mutmut-ghi789/project/
+├── src/pricing.py
+└── tests/test_pricing.py
+```
+
+TypeScript and Java also create project copies in the operating system's temporary directory. The actual paths and subdirectory layouts depend on the language and operating system. Temporary directories are cleaned up after the checks.
+
+### Dependencies of the project being checked
+
+External packages used by the project must be prepared before checking it. Installing the checker and preparing project packages are separate steps.
+
+| Language | Preparing and using project packages |
+|---|---|
+| Python | `setup --python-requirements requirements.txt` prepares `.sentinel-deps`, which is copied into each work directory. An existing `.venv` is not copied or selected automatically. |
+| TypeScript | Install the project's packages in the checked module's `node_modules` first. Work directories link to those packages without copying their contents. Vitest, Vite, and mutation tools use the checker's pinned versions. Checks do not install packages automatically. |
+| Java | `setup --language java --java-dependencies` prepares `.sentinel-m2`, which both checks reference without copying. If it is absent, the checker's Maven repository is used. Missing packages cause a setup or execution error. |
+
+Parallel execution needs both work copies and their memory at the same time. An execution error stops and cleans up the other running check. A CRAP score or mutation rate below its threshold still collects both results. Changes to the original code during the check are not accepted as a passing result.
+
+**Changes made for testing and edits that improve the project are separate steps.** `check` only reports results. With the default `sentinel` invocation, Claude Code or Codex reads the results and improves the original code and tests. SENTINEL then creates fresh copies of the updated project for the next check.
 
 ## From a user request to results
 
@@ -34,7 +121,7 @@ flowchart TD
     U["User<br/>Check calculate_discount<br/>with its related tests"]
     A["Coding agent<br/>Select source files, functions, and tests"]
     C["sentinel check<br/>--file · --function · --tests"]
-    S["SENTINEL<br/>Run the language-specific checkers"]
+    S["SENTINEL<br/>Run CRAP and mutation checks on temporary copies<br/>CRAP preserves logic · mutation changes the copy"]
     J["JSON: exitCode: 2<br/>selection: partial<br/>status: qualityFailed<br/>Includes scores and failure locations"]
     R["Coding agent<br/>Explain the results"]
     F["Default invocation:<br/>edit and recheck when thresholds are not met<br/>check: report results and stop"]

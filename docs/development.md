@@ -46,6 +46,10 @@ PYTHONPATH=src python3 -B -m unittest discover -s tests -v
 
 이 명령의 통과만으로 실제 Python·TypeScript·Java 검사 도구의 설치와 실행까지 확인한 것은 아닙니다. 실제 도구를 사용하는 검사는 아래 **7. GitHub에서 실행하는 검사**를 참고하세요.
 
+환경에 따라 시험이 실패하면 실제 기능 오류와 시험의 환경 가정을 구분합니다. 예를 들어 출력이 막힌 상태에서 Ctrl+C를 누르는 시험은, 오류 출력을 시작했다는 신호를 받은 뒤 실제로 종료되는지 확인합니다. 커널 내부에서 부르는 대기 상태 이름은 비교하지 않습니다.
+
+Linux 파일 보호 시험은 복사본의 권한, 원본 보존, 경로·심볼릭 링크 교체 시의 거부 동작과 실패 후 정리를 확인합니다. 권한 설정에는 이미 열어 둔 폴더를 가리키는 `/proc/self/fd`를 사용하므로 `fchmodat2`가 없는 WSL 커널에서도 실행할 수 있습니다. 이 참조가 열어 둔 폴더와 일치하지 않으면 작업을 거부합니다. 시험에서 보호 조건을 생략하거나, 실패를 건너뛰어 통과로 바꾸지 않습니다.
+
 ## 3. 관련 문서 수정하기
 
 명령이나 출력이 바뀌었다면 사용자가 복사할 예시도 함께 고칩니다. 예를 들어 명령 옵션을 추가했다면 옵션 설명과 실행 예시를, 결과 항목을 추가했다면 출력 예시와 그 항목의 뜻을 수정합니다.
@@ -158,7 +162,8 @@ GitHub Actions는 저장소에 올린 코드와 문서를 자동으로 검사하
 | --- | --- |
 | [문서 검사](../.github/workflows/docs.yml) | 브랜치 push와 PR에 포함된 문서 목록·링크·관련 문서 갱신 여부 확인 |
 | [Linux 테스트](../.github/workflows/ci.yml) | 전체 실행기 테스트, 플러그인 설정, 사용할 언어 도구의 승인 목록 확인 |
-| [macOS 테스트](../.github/workflows/ci.yml) | Intel·Apple Silicon에서 지원 명령과 설치 충돌 테스트, 실제 언어 도구 설치·검사 |
+| [호환성 테스트](../.github/workflows/ci.yml) | Ubuntu 22.04의 Python 3.9, Ubuntu 24.04 ARM의 Python 3.12에서 전체 실행기 테스트 |
+| [macOS 테스트](../.github/workflows/ci.yml) | Intel·Apple Silicon에서 지원 명령·설치 충돌·출력 중단·실행 방식 선택 테스트, 실제 언어 도구 설치·검사 |
 
 [verify_native.py](../scripts/verify_native.py)는 승인된 Python·TypeScript·Java 도구를 내려받아 `setup`(설치), `plan`(대상 확인), `version`(설치 상태 확인)을 실행합니다. 이어서 파일·함수 검사, 결함을 놓치는 테스트의 기준 미달, 테스트를 복원한 뒤 전체 재검사를 확인합니다. 이 검사는 외부 도구 설치와 실행을 포함합니다. 실험용 Go·OCI 실행 경로는 Linux 전용입니다.
 

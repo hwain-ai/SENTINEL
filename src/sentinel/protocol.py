@@ -52,6 +52,7 @@ class Observation:
     cancellation_requested: bool = False
     details: Optional[Dict[str, object]] = None
     diagnostic: Optional[str] = None
+    execution_mode: Optional[str] = None
 
 
 @dataclass
@@ -113,15 +114,15 @@ def _close_stream(stream) -> bool:
         return False
 
 
-def _collect(process: subprocess.Popen, request: bytes, timeout: Optional[float]) -> tuple:
-    return _collect_core(process, request, timeout, MAX_OUTPUT_BYTES, False)
+def _collect(process: subprocess.Popen, request: bytes, timeout: Optional[float], cooperative=False) -> tuple:
+    return _collect_core(process, request, timeout, MAX_OUTPUT_BYTES, False, cooperative)
 
 
 def _collect_reference(process: subprocess.Popen, request: bytes, timeout: float) -> tuple:
     return _collect_core(process, request, timeout, _REFERENCE_OUTPUT_BYTES, True)
 
 
-def _collect_core(process, request, timeout, output_limit, strict_retention):
+def _collect_core(process, request, timeout, output_limit, strict_retention, cooperative=False):
     streams = {process.stdout: bytearray(), process.stderr: bytearray()}
     deadline = None if timeout is None else time.monotonic() + timeout
     failure: Optional[str] = None
@@ -202,6 +203,14 @@ def _collect_core(process, request, timeout, output_limit, strict_retention):
                     _retry_cleanup(selector.close, cleanup)
                 except Exception:
                     cleanup.failed = True
+            if cooperative and (cleanup.interrupted or failure is not None) and process.poll() is None:
+                try:
+                    process.send_signal(signal.SIGINT)
+                    process.wait(timeout=30)
+                except subprocess.TimeoutExpired:
+                    cleanup.failed = True
+                except ProcessLookupError:
+                    pass
             # A successful direct child may still have descendants in its process group.
             _terminate_group(process, cleanup)
             for stream in (process.stdin, process.stdout, process.stderr):
@@ -225,7 +234,7 @@ def _parse_response(raw: bytes, request: Dict[str, object], bundle: Bundle, proc
         response = parse_json_bytes(raw, "tool response")
     except SentinelError:
         return Observation("toolError", 1) if not raw and process_code != 0 else Observation("backendError", 6)
-    if not isinstance(response, dict) or not RESPONSE_KEYS <= set(response) or set(response) - RESPONSE_KEYS - {"details", "selection", "diagnostic"}:
+    if not isinstance(response, dict) or not RESPONSE_KEYS <= set(response) or set(response) - RESPONSE_KEYS - {"details", "selection", "diagnostic", "executionMode"}:
         return Observation("backendError", 6)
     string_fields = ("protocolVersion", "requestId", "command", "moduleId", "language", "toolVersion", "status")
     if any(not isinstance(response.get(key), str) for key in string_fields):
@@ -250,6 +259,11 @@ def _parse_response(raw: bytes, request: Dict[str, object], bundle: Bundle, proc
         return Observation("backendError", 6)
     if "selection" in request and response.get("selection") != request["selection"]:
         return Observation("backendError", 6, diagnostic="selectionNotAcknowledged")
+    execution_mode = response.get("executionMode")
+    if "executionMode" in request and execution_mode != request["executionMode"]:
+        return Observation("backendError", 6, diagnostic="executionModeNotAcknowledged")
+    if execution_mode is not None and execution_mode not in ("parallel", "sequential"):
+        return Observation("backendError", 6)
     diagnostic = response.get("diagnostic")
     if diagnostic is not None and (not isinstance(diagnostic, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,95}", diagnostic)):
         return Observation("backendError", 6)
@@ -265,7 +279,7 @@ def _parse_response(raw: bytes, request: Dict[str, object], bundle: Bundle, proc
             return Observation("backendError", 6)
     elif "selection" in request and status in ("passed", "qualityFailed"):
         return Observation("backendError", 6)
-    return Observation(status, response["exitCode"], details=details, diagnostic=diagnostic)
+    return Observation(status, response["exitCode"], details=details, diagnostic=diagnostic, execution_mode=execution_mode)
 
 
 def _entrypoint_command(executable: Path) -> List[str]:
@@ -292,6 +306,7 @@ def run_check(
     gate: Gate = DEFAULT_GATE,
     changed_files: Optional[Sequence[str]] = None,
     selection: Optional[Dict[str, object]] = None,
+    execution_mode: Optional[str] = None,
 ) -> Observation:
     request: Dict[str, object] = {
         "protocolVersion": "sentinel-tool-protocol-v1",
@@ -307,6 +322,10 @@ def run_check(
         request["changedFiles"] = list(changed_files)
     if selection is not None:
         request["selection"] = selection
+    if execution_mode is not None:
+        if execution_mode not in ("parallel", "sequential"):
+            raise SentinelError("invalidExecutionMode", "execution mode must be parallel or sequential", 3)
+        request["executionMode"] = execution_mode
     payload = json.dumps(request, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     executable = bundle.source / bundle.entrypoint
     try:
@@ -322,7 +341,7 @@ def run_check(
         )
     except OSError:
         return Observation("backendError", 6)
-    stdout, _stderr, failure = _collect(process, payload, timeout)
+    stdout, _stderr, failure = _collect(process, payload, timeout, cooperative=execution_mode is not None)
     if failure == "outputOverflow":
         return Observation("evidenceError", 7)
     if failure == "cancelledCleanupError":

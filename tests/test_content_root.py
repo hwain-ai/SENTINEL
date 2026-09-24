@@ -798,7 +798,7 @@ class ContentRootTests(unittest.TestCase):
         self.assertEqual(list(backup.iterdir()), [])
         self.assertEqual(list(self.destination_parent.iterdir()), [])
 
-    def test_staging_cleanup_uses_open_descriptors_not_path_chmod(self):
+    def test_staging_cleanup_changes_permissions_only_through_bound_descriptors(self):
         module = self.api()
         stage = self.destination_parent / ".content-root-test-cleanup"
         nested = stage / "nested"
@@ -810,17 +810,70 @@ class ContentRootTests(unittest.TestCase):
         stage.chmod(0o500)
         expected = module._snapshot(os.lstat(stage))
         parent_descriptor = os.open(self.destination_parent, module.OPEN_DIRECTORY)
+        real_chmod = module.os.chmod
+
+        def descriptor_chmod(path, mode, *, dir_fd=None):
+            self.assertIsNotNone(dir_fd, "cleanup must not chmod a mutable filesystem path")
+            self.assertIsInstance(path, str)
+            self.assertTrue(path.isdecimal())
+            self.assertTrue(os.path.samestat(os.fstat(dir_fd), os.stat("/proc/self/fd")))
+            self.assertTrue(os.path.samestat(os.fstat(int(path)), os.stat(path, dir_fd=dir_fd)))
+            real_chmod(path, mode, dir_fd=dir_fd)
+
         try:
-            with mock.patch.object(
-                module.os,
-                "chmod",
-                side_effect=AssertionError("path chmod must not be used during cleanup"),
-            ) as path_chmod:
+            with mock.patch.object(module.os, "chmod", side_effect=descriptor_chmod):
                 module._remove_staging(parent_descriptor, stage.name, expected)
-            path_chmod.assert_not_called()
         finally:
             os.close(parent_descriptor)
         self.assertFalse(stage.exists())
+
+    def test_descriptor_permission_change_does_not_follow_a_replaced_project_path(self):
+        module = self.api()
+        original = self.destination_parent / "original"
+        original.mkdir(mode=0o000)
+        descriptor = os.open(original, module.OPEN_PATH_DIRECTORY)
+        held = self.destination_parent / "held"
+        original.rename(held)
+        victim = self.destination_parent / "victim"
+        victim.mkdir(mode=0o500)
+        original.symlink_to(victim, target_is_directory=True)
+        try:
+            module._fchmod_path_descriptor(descriptor, 0o700)
+            self.assertEqual(stat.S_IMODE(held.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(victim.stat().st_mode), 0o500)
+            self.assertTrue(original.is_symlink())
+        finally:
+            os.close(descriptor)
+
+    def test_descriptor_permission_change_rejects_a_mismatched_proc_entry(self):
+        module = self.api()
+        target = self.destination_parent / "target"
+        target.mkdir(mode=0o000)
+        descriptor = os.open(target, module.OPEN_PATH_DIRECTORY)
+        before = len(os.listdir("/proc/self/fd"))
+        try:
+            with mock.patch.object(module.os, "stat", return_value=self.destination_parent.stat()):
+                with mock.patch.object(module.os, "chmod") as chmod:
+                    self.assert_safe_failure(lambda: module._fchmod_path_descriptor(descriptor, 0o700))
+                chmod.assert_not_called()
+            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o000)
+            self.assertEqual(len(os.listdir("/proc/self/fd")), before)
+        finally:
+            os.close(descriptor)
+
+    def test_descriptor_permission_change_does_not_use_project_paths_if_proc_is_unavailable(self):
+        module = self.api()
+        target = self.destination_parent / "target"
+        target.mkdir(mode=0o000)
+        descriptor = os.open(target, module.OPEN_PATH_DIRECTORY)
+        try:
+            with mock.patch.object(module.os, "open", side_effect=FileNotFoundError("proc unavailable")):
+                with mock.patch.object(module.os, "chmod") as chmod:
+                    self.assert_safe_failure(lambda: module._fchmod_path_descriptor(descriptor, 0o700))
+                chmod.assert_not_called()
+            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o000)
+        finally:
+            os.close(descriptor)
 
     def test_recheck_catches_byte_type_mode_extra_and_missing_changes(self):
         mutations = ("byte", "type", "mode", "extra", "missing")

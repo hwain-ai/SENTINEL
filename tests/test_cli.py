@@ -163,6 +163,7 @@ def make_bundle(parent, language="python", version="1.2.3", behavior="pass"):
         "_counter.write_text(str(int(_counter.read_text()) + 1) if _counter.exists() else '1')\n"
     )
     executable = "#!/usr/bin/python3\n" + counter_code + textwrap.dedent(scripts[behavior])
+    executable = executable.replace("print(json.dumps(response))", "response.update({'executionMode': request['executionMode']} if 'executionMode' in request else {})\nprint(json.dumps(response))")
     entrypoint = bundle / "bin" / "sentinel-tool"
     entrypoint.write_text(executable, encoding="utf-8")
     entrypoint.chmod(0o700)

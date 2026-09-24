@@ -29,6 +29,25 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/admission.py verify
 
+  compatibility:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            python: "3.9"
+          - os: ubuntu-24.04-arm
+            python: "3.12"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify the runner across Python versions and CPU architectures
+        run: PYTHONPATH=src python3 -B -m unittest discover -s tests -v
+
   macos:
     strategy:
       fail-fast: false
@@ -45,7 +64,7 @@ jobs:
           PYTHONPATH: src:tests
         run: |
           export TMPDIR="$(python3 -c 'import pathlib,tempfile; print(pathlib.Path(tempfile.gettempdir()).resolve())')"
-          python3 -B -m unittest test_bundle_publication test_cli test_setup test_admission test_changed test_gate test_selection test_host_plugin test_protocol_entrypoint test_docs_lint tests.test_review_fixes.InstallReviewTests -v
+          python3 -B -m unittest test_bundle_publication test_cli test_setup test_admission test_changed test_gate test_selection test_execution_mode test_host_plugin test_protocol_entrypoint test_docs_lint tests.test_review_fixes.InstallReviewTests tests.test_review_fixes.InputReviewTests -v
       - name: Install and exercise admitted Python, TypeScript and Java tools
         run: python3 -B scripts/verify_native.py --output "$RUNNER_TEMP/sentinel-native"
       - name: Save native verification output
