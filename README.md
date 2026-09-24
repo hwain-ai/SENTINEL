@@ -399,5 +399,6 @@ SENTINEL의 탐지 성공·오류 계산 규칙 때문에 원본 도구와 점�
 - [결과 해석](docs/results.md): 측정 사례와 점수 계산
 - [CLI 참고](docs/references/sentinel-cli-reference.md): 옵션·설정·도구 연결 계약
 - [플러그인 안내](plugins/sentinel/README.md): Claude Code·Codex 사용 지침
-- [개발·문서 관리](docs/contributing.md): 수정한 코드에 맞는 문서와 push 전 검사
+- [기여 안내](docs/contributing.md): 오류 제보와 문서·코드 수정안 제출
+- [개발 안내](docs/development.md): 개발 준비, 테스트 실행과 문서 검사
 - [MIT 라이선스](LICENSE)

@@ -39,7 +39,11 @@
     },
     {
       "path": "docs/contributing.md",
-      "summary": "문서 색인·소스 연결표 관리, diff 검사와 push 훅 사용"
+      "summary": "오류 제보, 문서·코드 수정과 PR 제출 방법"
+    },
+    {
+      "path": "docs/development.md",
+      "summary": "개발 준비, 테스트 실행, 문서 검사와 실패 해결 방법"
     },
     {
       "path": "plugins/sentinel/skills/check/SKILL.md",
@@ -155,7 +159,7 @@
         "scripts/verify_native.py"
       ],
       "documents": [
-        "docs/contributing.md"
+        "docs/development.md"
       ]
     },
     {

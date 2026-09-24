@@ -399,5 +399,6 @@ The usage and contributor guides linked below are currently in Korean.
 - [Result interpretation](docs/results.md): measurement examples and score calculations.
 - [CLI reference](docs/references/sentinel-cli-reference.md): options, configuration, and tool integration contracts.
 - [Plugin guide](plugins/sentinel/README.md): instructions for Claude Code and Codex.
-- [Contributing and documentation maintenance](docs/contributing.md): which documents to update and pre-push checks.
+- [Contributing (Korean)](docs/contributing.md): report problems and submit documentation or code changes.
+- [Development guide (Korean)](docs/development.md): development setup, tests, and documentation checks.
 - [MIT license](LICENSE)
