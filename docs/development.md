@@ -165,7 +165,7 @@ GitHub Actions는 저장소에 올린 코드와 문서를 자동으로 검사하
 | [호환성 테스트](../.github/workflows/ci.yml) | Ubuntu 22.04의 Python 3.9, Ubuntu 24.04 ARM의 Python 3.12에서 전체 실행기 테스트 |
 | [macOS 테스트](../.github/workflows/ci.yml) | Intel·Apple Silicon에서 지원 명령·설치 충돌·출력 중단·실행 방식 선택 테스트, 실제 언어 도구 설치·검사 |
 
-[verify_native.py](../scripts/verify_native.py)는 승인된 Python·TypeScript·Java 도구를 내려받아 `setup`(설치), `plan`(대상 확인), `version`(설치 상태 확인)을 실행합니다. 이어서 파일·함수 검사, 결함을 놓치는 테스트의 기준 미달, 테스트를 복원한 뒤 전체 재검사를 확인합니다. 이 검사는 외부 도구 설치와 실행을 포함합니다. 실험용 Go·OCI 실행 경로는 Linux 전용입니다.
+[verify_native.py](../scripts/verify_native.py)는 승인된 Python·TypeScript·Java 도구를 내려받아 `setup`(설치), `plan`(대상 확인), `version`(설치 상태 확인)을 실행합니다. 이어서 같은 파일·함수·테스트를 기본 병렬 실행과 명시적 순차 실행으로 검사해 실행 방식 응답과 측정 결과의 일치를 확인합니다. 결함을 놓치는 테스트의 기준 미달과 테스트를 복원한 뒤 전체 재검사도 확인합니다. 이 검사는 외부 도구 설치와 실행을 포함합니다. 실행 방식 계약을 바꾸면 지원하는 새 어댑터 버전을 발행하고, 해당 커밋의 CI 성공 후 승인 목록도 함께 갱신해야 합니다. 실험용 Go·OCI 실행 경로는 Linux 전용입니다.
 
 <details>
 <summary>문서 검사의 비교 기준과 병합 제한을 설정할 때</summary>

@@ -59,11 +59,16 @@ def verify(language, output):
     selected = invoke(folder, "check", [*common, *selection])
     result = selected["results"][0]
     assert selected["selection"] == "partial" and result["status"] == "passed", selected
+    assert result["executionMode"] == "parallel", result
     assert result["details"]["scope"]["files"] == [source], result
     assert result["details"]["scope"]["tests"] == [test], result
     assert len(result["details"]["crap"]["functions"]) == 1, result
     assert result["details"]["mutation"]["inScope"] > 0, result
-    print(language + ": selected check passed", flush=True)
+    sequential = invoke(folder, "check", [*common, *selection, "--execution-mode", "sequential"])
+    sequential_result = sequential["results"][0]
+    assert sequential_result["executionMode"] == "sequential", sequential_result
+    assert sequential_result["details"] == result["details"], (result, sequential_result)
+    print(language + ": parallel and sequential selected checks agree", flush=True)
     test_path = project / test
     text = test_path.read_text()
     assert strong in text
